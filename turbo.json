@@ -1,0 +1,53 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalEnv": [
+    "NODE_ENV",
+    "MONGODB_URI",
+    "SESSION_SECRET",
+    "SESSION_COOKIE_NAME",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
+    "CORS_ORIGINS",
+    "API_PORT",
+    "API_ORIGIN",
+    "SEED_DEMO",
+    "PUBLIC_API_URL",
+    "CLICK_SALT",
+    "SHOPIFY_STORE_DOMAIN",
+    "SHOPIFY_STOREFRONT_DOMAIN",
+    "SHOPIFY_API_VERSION",
+    "SHOPIFY_TOKEN_ENC_KEY",
+    "SHOPIFY_WEBHOOK_SECRET",
+    "SHOPIFY_API_KEY",
+    "SHOPIFY_API_SECRET",
+    "SHOPIFY_SCOPES",
+    "ADMIN_URL",
+    "STOREFRONT_URL",
+    "NEXT_PUBLIC_API_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "check-types": {
+      "dependsOn": ["^build"]
+    },
+    "seed": {
+      "cache": false
+    }
+  }
+}

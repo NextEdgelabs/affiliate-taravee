@@ -1,0 +1,48 @@
+{
+  "name": "@taravee/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "seed": "nest build && node dist/seed.js",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings 100",
+    "check-types": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/mongoose": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^4.1.2",
+    "@nestjs/throttler": "^6.4.0",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "connect-mongo": "^5.1.0",
+    "express-session": "^1.18.1",
+    "mongoose": "^8.9.5",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@taravee/eslint-config": "workspace:*",
+    "@taravee/types": "workspace:*",
+    "@taravee/typescript-config": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.1",
+    "@types/node": "^22.10.7",
+    "@types/passport": "^1.0.17",
+    "@types/passport-local": "^1.0.38",
+    "eslint": "^9.18.0",
+    "typescript": "^5.7.3"
+  }
+}

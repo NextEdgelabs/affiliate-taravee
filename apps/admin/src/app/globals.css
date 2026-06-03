@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../../../../packages/ui/src/styles/globals.css";
+
+/* Scan this app and the shared UI package for class names. */
+@source "../";
+@source "../../../../packages/ui/src";
+
+/*
+ * Premium Taravee admin theme — luxury gold accent on a warm charcoal sidebar.
+ * Applied after the shared import so these declarations win the cascade.
+ * The affiliate app keeps the neutral base (with a gold accent).
+ */
+:root {
+  --radius: 0.75rem;
+
+  /* Metallic gold primary; dark text sits on gold for contrast. */
+  --primary: oklch(0.74 0.124 86);
+  --primary-foreground: oklch(0.22 0.012 70);
+  --ring: oklch(0.74 0.124 86);
+  --accent: oklch(0.96 0.03 90);
+  --accent-foreground: oklch(0.42 0.07 75);
+
+  /* Warm charcoal sidebar with gold highlights (lightened a touch from 0.2) */
+  --sidebar: oklch(0.27 0.007 72);
+  --sidebar-foreground: oklch(0.93 0.012 85);
+  --sidebar-primary: oklch(0.78 0.13 86);
+  --sidebar-primary-foreground: oklch(0.2 0.01 70);
+  --sidebar-accent: oklch(0.35 0.014 75);
+  --sidebar-accent-foreground: oklch(0.98 0.01 85);
+  --sidebar-border: oklch(0.42 0.012 75 / 55%);
+  --sidebar-ring: oklch(0.78 0.13 86);
+}
+
+.dark {
+  --primary: oklch(0.78 0.13 86);
+  --primary-foreground: oklch(0.2 0.01 70);
+  --ring: oklch(0.78 0.13 86);
+  --accent: oklch(0.28 0.02 80);
+  --accent-foreground: oklch(0.96 0.02 88);
+}
+
+@layer base {
+  body {
+    /* Subtle gold backdrop behind the app shell. */
+    background-image: radial-gradient(
+      125% 125% at 50% 10%,
+      color-mix(in oklch, var(--color-primary) 8%, var(--color-background)) 0%,
+      var(--color-background) 45%
+    );
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+}

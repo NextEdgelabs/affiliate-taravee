@@ -1,0 +1,31 @@
+{
+  "name": "taravee",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "clean": "rm -rf .turbo apps/*/.next apps/*/.turbo apps/*/dist packages/*/.turbo && echo \"cleaned build caches\"",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "check-types": "turbo run check-types",
+    "seed": "turbo run seed --filter=@taravee/api",
+    "icons": "node scripts/generate-icons.mjs",
+    "verify:api": "pnpm --filter @taravee/api build && node scripts/verify-api.mjs",
+    "verify:shopify": "pnpm --filter @taravee/api build && node scripts/verify-shop-domain.mjs && node scripts/verify-shopify-cc.mjs",
+    "verify:refunds": "pnpm --filter @taravee/api build && node scripts/verify-refunds.mjs",
+    "verify:frontend": "pnpm build && node scripts/verify-frontend.mjs",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.2.0",
+    "prettier": "^3.4.2",
+    "sharp": "^0.34.5",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  }
+}
