@@ -15,6 +15,13 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const isProd = config.get<string>("NODE_ENV") === "production";
 
+  // Behind an HTTPS-terminating reverse proxy (Render/Railway/Fly/nginx) the app
+  // receives plain HTTP internally, so req.secure is false and express-session
+  // would DROP the `Secure` session cookie — login returns 200 but no cookie is
+  // set, so the next request is unauthenticated and bounces back to /login.
+  // Trusting the first proxy hop lets Express read X-Forwarded-Proto.
+  if (isProd) app.getHttpAdapter().getInstance().set("trust proxy", 1);
+
   app.setGlobalPrefix("api");
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
@@ -35,7 +42,12 @@ async function bootstrap() {
 
   const mongoUrl = config.get<string>("MONGODB_URI") ?? "mongodb://localhost:27017/taravee";
   const store = MongoStore.create({ mongoUrl, collectionName: "sessions" });
-  const secret = config.get<string>("SESSION_SECRET") ?? "dev-only-insecure-secret";
+  const configuredSecret = config.get<string>("SESSION_SECRET");
+  // Fail loud rather than silently signing sessions with the dev default in prod.
+  if (isProd && !configuredSecret) {
+    throw new Error("SESSION_SECRET must be set in production");
+  }
+  const secret = configuredSecret ?? "dev-only-insecure-secret";
 
   // Per-app session cookies so the admin and affiliate apps DON'T share a session
   // even on the same host (on localhost cookies ignore port). Each app sends an
