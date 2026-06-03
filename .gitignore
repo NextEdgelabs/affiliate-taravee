@@ -1,0 +1,32 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# builds
+dist
+build
+.next
+out
+
+# turbo
+.turbo
+
+# env — ignore ALL env files (incl. .env.production) except the committed example
+.env*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# misc
+.DS_Store
+*.pem
+coverage
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea

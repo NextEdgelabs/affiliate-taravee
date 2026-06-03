@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../../../../packages/ui/src/styles/globals.css";
+
+/* Scan this app and the shared UI package for class names. */
+@source "../";
+@source "../../../../packages/ui/src";
+
+/* Taravee gold accent (affiliate keeps the light neutral sidebar). */
+:root {
+  --radius: 0.75rem;
+  --primary: oklch(0.74 0.124 86);
+  --primary-foreground: oklch(0.22 0.012 70);
+  --ring: oklch(0.74 0.124 86);
+  --accent: oklch(0.96 0.03 90);
+  --accent-foreground: oklch(0.42 0.07 75);
+  --sidebar-primary: oklch(0.74 0.124 86);
+  --sidebar-ring: oklch(0.74 0.124 86);
+}
+
+.dark {
+  --primary: oklch(0.78 0.13 86);
+  --primary-foreground: oklch(0.2 0.01 70);
+  --ring: oklch(0.78 0.13 86);
+}

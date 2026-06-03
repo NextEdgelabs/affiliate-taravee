@@ -1,0 +1,12 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: taravee-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - taravee_mongo_data:/data/db
+
+volumes:
+  taravee_mongo_data:

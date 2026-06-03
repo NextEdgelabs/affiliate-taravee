@@ -1,0 +1,21 @@
+{
+  "name": "@taravee/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "echo \"no lint\" && exit 0"
+  },
+  "devDependencies": {
+    "@taravee/typescript-config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
