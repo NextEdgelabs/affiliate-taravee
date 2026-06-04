@@ -55,6 +55,12 @@ async function bootstrap() {
   // so the browser keeps the two logins independent. Default → admin (covers the
   // admin-only Shopify OAuth full-page redirect, which carries no header).
   const base = (config.get<string>("SESSION_COOKIE_NAME") ?? "taravee.sid").replace(/\.sid$/i, "");
+  // Scope the cookie to the shared PARENT domain (e.g. ".taaravi.com") so it is
+  // sent to BOTH the API (api.*) and the dashboards (admin.*/app.*). Without this,
+  // the cookie is host-only to the API domain and the dashboards' SSR session
+  // check (getSession on admin.*) never sees it → login bounces back to /login.
+  // (Locally this isn't needed: localhost:4000 and :3001 share the localhost jar.)
+  const cookieDomain = config.get<string>("SESSION_COOKIE_DOMAIN") || undefined;
   const mkSession = (name: string) =>
     session({
       name,
@@ -64,6 +70,7 @@ async function bootstrap() {
       store,
       cookie: {
         httpOnly: true,
+        domain: cookieDomain,
         // No same-origin proxy: the frontends call the API cross-origin, so the
         // session cookie must be SameSite=None (requires Secure) in production.
         // Dev stays Lax (http://localhost can't set Secure cookies).

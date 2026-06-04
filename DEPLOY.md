@@ -15,6 +15,13 @@ cross-origin with credentials. The API allows their origins via `CORS_ORIGINS`, 
 session cookie is `SameSite=None; Secure` in prod; isolation comes from per-app cookie
 names + the `x-taravee-app` header. The storefront is public.
 
+> **Same-parent-domain requirement.** Because the dashboards check the session **server-side**
+> (SSR), the API and the dashboards must share a parent domain (e.g. `api.taaravi.com` +
+> `admin.taaravi.com` under `taaravi.com`) and you MUST set `SESSION_COOKIE_DOMAIN` to that
+> parent with a leading dot (`.taaravi.com`). Otherwise the cookie is host-only to the API
+> domain, the dashboards' SSR never sees it, and login bounces straight back to `/login`.
+> (Locally this isn't needed — `localhost:4000` and `:3001` share one cookie jar.)
+
 ## 1. Build & run
 
 ```bash
@@ -41,6 +48,7 @@ PUBLIC_API_URL=https://api.taravee.com          # public HTTPS — used for webh
 MONGODB_URI=mongodb+srv://…                       # least-privilege user
 SESSION_SECRET=<64 hex>                            # required; no default in prod
 SESSION_COOKIE_NAME=taravee.sid
+SESSION_COOKIE_DOMAIN=.taravee.com                 # REQUIRED in prod: shared parent of api.*/admin.*/app.* so SSR sees the cookie
 CORS_ORIGINS=https://admin.taravee.com,https://app.taravee.com   # NOT the storefront
 ADMIN_EMAIL=ops@yourbrand.com
 ADMIN_PASSWORD=<strong>                            # required + non-default in prod or seed refuses
@@ -114,5 +122,6 @@ Three connect options on the admin **Shopify** page (pick one):
 - [ ] `SESSION_SECRET`, `SHOPIFY_TOKEN_ENC_KEY` set (no defaults); `NODE_ENV=production`.
 - [ ] `ADMIN_PASSWORD` strong + non-default; `SEED_DEMO` unset.
 - [ ] `CORS_ORIGINS` = admin + affiliate domains only (storefront excluded).
+- [ ] `SESSION_COOKIE_DOMAIN` = shared parent (`.yourbrand.com`); API + dashboards on its subdomains.
 - [ ] Shopify app redirect URL + webhook subscriptions point at `PUBLIC_API_URL`.
 - [ ] DNS: `api` / `admin` / `app` / `shop` subdomains → services, all HTTPS.
