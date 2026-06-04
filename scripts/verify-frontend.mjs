@@ -71,24 +71,34 @@ try {
   log("\n▶ Admin app");
   const adminLogin = await (await fetch("http://localhost:3001/login")).text();
   assert(adminLogin.includes("Admin sign in"), "admin /login renders");
-  // Same-origin API proxy (isolation fix): the app proxies /api to the backend.
-  const adminProxy = await fetch("http://localhost:3001/api/health");
-  assert(adminProxy.status === 200, "admin same-origin /api proxy → backend 200");
+  // No proxy: the app calls the API directly cross-origin — the API must allow it via CORS.
+  const adminCors = await fetch("http://localhost:4000/api/health", {
+    headers: { Origin: "http://localhost:3001" },
+  });
+  assert(
+    adminCors.headers.get("access-control-allow-origin") === "http://localhost:3001",
+    "API allows admin origin via CORS (direct, no proxy)",
+  );
 
   log("\n▶ Affiliate app");
   const reg = await (await fetch("http://localhost:3002/register")).text();
   assert(reg.includes("Become a creator"), "affiliate /register renders");
   assert(reg.includes("Instagram") && reg.includes("YouTube"), "register has IG + YT metric fields");
-  const affProxy = await fetch("http://localhost:3002/api/health");
-  assert(affProxy.status === 200, "affiliate same-origin /api proxy → backend 200");
+  const affCors = await fetch("http://localhost:4000/api/health", {
+    headers: { Origin: "http://localhost:3002" },
+  });
+  assert(
+    affCors.headers.get("access-control-allow-origin") === "http://localhost:3002",
+    "API allows affiliate origin via CORS (direct, no proxy)",
+  );
 
   log("\n▶ Storefront app");
   assert((await fetch("http://localhost:3003/")).status === 200, "storefront / → 200");
-  const creatorRes = await fetch("http://localhost:3003/c/demo-creator");
-  assert(creatorRes.status === 200, "storefront /c/demo-creator → 200 (SSR resolved creator via API)");
+  const creatorRes = await fetch("http://localhost:3003/demo-creator");
+  assert(creatorRes.status === 200, "storefront /demo-creator → 200 (SSR resolved creator via API)");
   const creatorHtml = await creatorRes.text();
   assert(creatorHtml.includes("Demo Creator"), "creator storefront shows the creator name");
-  assert((await fetch("http://localhost:3003/c/does-not-exist")).status === 404, "unknown creator → 404");
+  assert((await fetch("http://localhost:3003/does-not-exist")).status === 404, "unknown creator → 404");
 
   log("\n▶ Collection storefront page (Phase 2)");
   // Create + publish a collection via the API (demo creator), then SSR its page.
@@ -114,7 +124,7 @@ try {
     body: JSON.stringify({ productHandles: ["sample-handle"] }),
   });
   await fetch(`${api}/creator/collections/${col.id}/publish`, { method: "POST", headers: h });
-  const colRes = await fetch(`http://localhost:3003/c/demo-creator/col/${col.slug}`);
+  const colRes = await fetch(`http://localhost:3003/demo-creator/c/${col.slug}`);
   assert(colRes.status === 200, "storefront collection page → 200");
   assert((await colRes.text()).includes("Holiday Edit"), "collection page shows the collection title");
 

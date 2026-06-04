@@ -1,9 +1,10 @@
 /**
- * Client calls go to THIS app's own origin (`/api/...`), which Next proxies to
- * the backend (see next.config.ts rewrites). That keeps the session cookie
- * first-party to this app — no shared cookie with the other apps, and no CORS.
+ * Client calls go DIRECTLY to the API (no proxy), cross-origin with credentials.
+ * The browser sends/stores the API's session cookie (SameSite=None + Secure in
+ * prod), and the API allows this origin via CORS (CORS_ORIGINS). Session
+ * isolation comes from the per-app cookie name + the x-taravee-app header below.
  */
-export const API_URL = "/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${API_URL}${path}`, {
