@@ -2,7 +2,7 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Run with `next start` (pnpm start) — not standalone.
   outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
   transpilePackages: ["@taravee/ui", "@taravee/types"],
   env: {

@@ -64,7 +64,10 @@ async function bootstrap() {
       store,
       cookie: {
         httpOnly: true,
-        sameSite: "lax",
+        // No same-origin proxy: the frontends call the API cross-origin, so the
+        // session cookie must be SameSite=None (requires Secure) in production.
+        // Dev stays Lax (http://localhost can't set Secure cookies).
+        sameSite: isProd ? "none" : "lax",
         secure: isProd,
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       },

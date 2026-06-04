@@ -5,34 +5,30 @@ Four runtime services + MongoDB:
 | Service | Run | Suggested domain |
 | --- | --- | --- |
 | `apps/api` (NestJS) | `node apps/api/dist/main.js` | `api.taravee.com` |
-| `apps/admin` (Next) | standalone server (below) | `admin.taravee.com` |
-| `apps/affiliate` (Next) | standalone server | `app.taravee.com` |
-| `apps/storefront` (Next) | standalone server | `shop.taravee.com` |
+| `apps/admin` (Next) | `pnpm --filter @taravee/admin start` | `admin.taravee.com` |
+| `apps/affiliate` (Next) | `pnpm --filter @taravee/affiliate start` | `app.taravee.com` |
+| `apps/storefront` (Next) | `pnpm --filter @taravee/storefront start` | `shop.taravee.com` |
 | MongoDB | Atlas or managed Mongo | — |
 
-The admin & affiliate apps **proxy `/api` to the API** (`API_ORIGIN`), so each gets a
-first-party, isolated session cookie on its own domain. The storefront is public.
+The admin & affiliate apps call the API **directly** (no proxy) at `NEXT_PUBLIC_API_URL`,
+cross-origin with credentials. The API allows their origins via `CORS_ORIGINS`, and the
+session cookie is `SameSite=None; Secure` in prod; isolation comes from per-app cookie
+names + the `x-taravee-app` header. The storefront is public.
 
-## 1. Build
+## 1. Build & run
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
 ```
 
-The API emits `apps/api/dist`. Each Next app emits a **standalone** bundle at
-`apps/<app>/.next/standalone`. To run a Next app standalone you must also ship its static
-assets and `public/`:
+The API emits `apps/api/dist` (`node apps/api/dist/main.js`). Each Next app runs with
+plain `next start` (via `pnpm --filter @taravee/<app> start`) — the apps are **not** built
+as `standalone`, so do not run `node .next/standalone/server.js` (that path no longer
+exists and `next start` is the supported run command).
 
-```bash
-# example for admin (repeat for affiliate, storefront)
-cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static
-cp -r apps/admin/public       apps/admin/.next/standalone/apps/admin/public
-PORT=3001 HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js
-```
-
-(Platforms that run `pnpm --filter @taravee/admin start` work too — standalone is just
-smaller/faster.)
+> The Next apps bake `NEXT_PUBLIC_API_URL` at **build** time. Set it (and the other
+> `NEXT_PUBLIC_*` vars) BEFORE `pnpm build` so the browser calls the right API origin.
 
 ## 2. Production environment
 
