@@ -1,7 +1,9 @@
 import type { Product } from "@taravee/types";
+import { Badge } from "@taravee/ui/components/badge";
 import { Card, CardContent } from "@taravee/ui/components/card";
+import { BookOpen } from "lucide-react";
 
-import { CreateLinkButton } from "@/components/create-link-button";
+import { ProductLinksDialog } from "@/components/product-links-dialog";
 import { serverGet } from "@/lib/server-api";
 
 export default async function ProductsPage() {
@@ -12,7 +14,8 @@ export default async function ProductsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
         <p className="text-muted-foreground">
-          Products available to promote. Create a link to start earning.
+          Products available to promote. Get your links — a storefront page and a direct-to-store
+          link — and follow each product&apos;s posting guidelines.
         </p>
       </div>
 
@@ -37,7 +40,15 @@ export default async function ProductsPage() {
               )}
               <CardContent className="flex flex-1 flex-col gap-2 p-4">
                 <div className="flex-1">
-                  <p className="line-clamp-2 text-sm font-medium">{p.title}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="line-clamp-2 text-sm font-medium">{p.title}</p>
+                    {p.contentGuidelines ? (
+                      <Badge variant="secondary" className="shrink-0 gap-1">
+                        <BookOpen className="size-3" />
+                        Guide
+                      </Badge>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {new Intl.NumberFormat("en-IN", {
                       style: "currency",
@@ -45,12 +56,7 @@ export default async function ProductsPage() {
                     }).format(p.priceRange.min)}
                   </p>
                 </div>
-                <CreateLinkButton
-                  type="product"
-                  productHandle={p.handle}
-                  title={p.title}
-                  label="Create link"
-                />
+                <ProductLinksDialog product={p} />
               </CardContent>
             </Card>
           ))}

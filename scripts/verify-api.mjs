@@ -2,6 +2,7 @@
 // flow against an in-memory MongoDB. Shopify/links/orders need a live store and
 // are verified separately. Boots the built Nest app + runs the seed first.
 import { spawn, spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -61,6 +62,9 @@ const env = {
   SHOPIFY_API_SECRET: "test-secret",
   PUBLIC_API_URL: "https://taravee.test",
   SHOPIFY_STORE_DOMAIN: "demo-shop.myshopify.com",
+  // Lets buildProductUrl resolve a store base without a live connection so the
+  // direct-link redirect can be exercised in the harness.
+  SHOPIFY_STOREFRONT_DOMAIN: "demo-shop.myshopify.com",
   ADMIN_URL: "http://localhost:3001",
 };
 
@@ -300,6 +304,160 @@ try {
   assert(adminSC.startsWith("taravee.admin.sid="), "admin login → taravee.admin.sid cookie");
   assert(affSC.startsWith("taravee.affiliate.sid="), "affiliate login → taravee.affiliate.sid cookie");
   assert(adminSC.split("=")[0] !== affSC.split("=")[0], "admin & affiliate use DIFFERENT session cookies");
+
+  log("\n▶ content guidelines + two link types");
+  // Insert a listed/ACTIVE product directly (no live Shopify) via the same in-memory DB.
+  const requireApi = createRequire(path.join(root, "apps/api/package.json"));
+  const mongoose = requireApi("mongoose");
+  await mongoose.connect(uri);
+  const products = mongoose.connection.collection("shopifyproducts");
+  const productId = new mongoose.Types.ObjectId();
+  const HANDLE = "verify-guideline-product";
+  await products.insertOne({
+    _id: productId,
+    shopifyProductId: "gid://shopify/Product/verify-1",
+    handle: HANDLE,
+    title: "Verify Guideline Product",
+    images: [],
+    shopifyStatus: "ACTIVE",
+    priceRange: { min: 499, max: 499, currency: "INR" },
+    variants: [],
+    collectionTitles: [],
+    listed: true,
+    commissionRate: null,
+    contentGuidelines: null,
+    guidelinesVisibleToCreators: false,
+    deletedInShopify: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  const idStr = productId.toString();
+
+  const findCreatorProduct = async () => {
+    const list = await (await fetch(`${BASE}/products`, { headers: demo.headers() })).json();
+    return (Array.isArray(list) ? list : []).find((p) => p.handle === HANDLE);
+  };
+
+  // Admin sees the product; brief starts empty + hidden.
+  const adminList = await (
+    await fetch(`${BASE}/admin/products`, { headers: admin.headers() })
+  ).json();
+  const adminRow = adminList.items.find((p) => p.handle === HANDLE);
+  assert(!!adminRow, "admin sees the inserted product");
+  assert(adminRow.contentGuidelines == null, "brief starts empty");
+  assert(adminRow.guidelinesVisibleToCreators === false, "brief starts hidden from creators");
+
+  // Creator does NOT see a hidden brief.
+  const cp1 = await findCreatorProduct();
+  assert(!!cp1, "creator can browse the listed product");
+  assert(cp1.contentGuidelines == null, "creator does NOT receive a hidden brief");
+
+  // Admin sets the brief + makes it visible.
+  const setG = await fetch(`${BASE}/admin/products/${idStr}/guidelines`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({
+      guidelines: {
+        reel: "15-30s vertical, hook in first 3s.",
+        disclosure: "#ad - affiliate partnership",
+        requiredHashtags: ["#ad", "#BJWHealth"],
+        prohibitedClaims: "No disease cure/treatment claims.",
+        healthDisclaimer: "Not for medicinal use.",
+      },
+      visible: true,
+    }),
+  });
+  const setGBody = await setG.json();
+  assert(setG.status === 200, "admin sets content guidelines → 200");
+  assert(setGBody.contentGuidelines?.reel?.includes("vertical"), "brief stored");
+  assert(setGBody.guidelinesVisibleToCreators === true, "brief now visible");
+
+  // Creator now sees the brief.
+  const cp2 = await findCreatorProduct();
+  assert(cp2.contentGuidelines?.reel?.includes("vertical"), "creator now receives the brief");
+  assert(
+    cp2.contentGuidelines?.requiredHashtags?.includes("#ad"),
+    "creator receives required hashtags",
+  );
+
+  // SYNC-SAFETY: a re-sync ($set Shopify fields, $setOnInsert app-owned) must NOT clobber the brief.
+  await products.updateOne(
+    { shopifyProductId: "gid://shopify/Product/verify-1" },
+    {
+      $set: { title: "Renamed By Sync", lastSyncedAt: new Date(), deletedInShopify: false },
+      $setOnInsert: {
+        listed: false,
+        commissionRate: null,
+        contentGuidelines: null,
+        guidelinesVisibleToCreators: false,
+      },
+    },
+    { upsert: true },
+  );
+  const afterSync = await (
+    await fetch(`${BASE}/admin/products`, { headers: admin.headers() })
+  ).json();
+  const syncedRow = afterSync.items.find((p) => p.id === idStr);
+  assert(syncedRow.title === "Renamed By Sync", "sync updates Shopify fields (title)");
+  assert(
+    syncedRow.contentGuidelines?.reel?.includes("vertical"),
+    "sync PRESERVES the admin brief (app-owned)",
+  );
+  assert(syncedRow.guidelinesVisibleToCreators === true, "sync PRESERVES brief visibility");
+
+  // Quick visibility toggle hides it from creators again.
+  const hide = await fetch(`${BASE}/admin/products/${idStr}/guidelines-visibility`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ visible: false }),
+  });
+  assert(hide.status === 200, "toggle guidelines visibility off → 200");
+  const cp3 = await findCreatorProduct();
+  assert(cp3.contentGuidelines == null, "creator brief hidden again after toggle");
+
+  // Two link types: creator gets a storefront link + a direct-to-Shopify link.
+  const mk = await fetch(`${BASE}/links`, {
+    method: "POST",
+    headers: demo.headers(),
+    body: JSON.stringify({ type: "product", productHandle: HANDLE, title: "Verify" }),
+  });
+  const link1 = await mk.json();
+  assert(mk.status === 201, "creator creates a product link → 201");
+  assert(
+    link1.publicUrl.startsWith("http://localhost:3003/") && link1.publicUrl.endsWith(`/${HANDLE}`),
+    "LINK TYPE 1: storefront page URL (/{username}/{handle})",
+  );
+  assert(/\/api\/r\/[a-f0-9]+$/.test(link1.redirectUrl), "LINK TYPE 2: direct redirect URL (/api/r/:id)");
+
+  // Idempotent: a second request returns the SAME link (no duplicate row).
+  const mk2 = await fetch(`${BASE}/links`, {
+    method: "POST",
+    headers: demo.headers(),
+    body: JSON.stringify({ type: "product", productHandle: HANDLE }),
+  });
+  const link2 = await mk2.json();
+  assert(link2.id === link1.id, "repeat create is idempotent (same link id)");
+
+  // The direct link 302s straight to Shopify carrying the creator's attribution.
+  const red = await fetch(`${BASE}/r/${link1.id}`, { redirect: "manual" });
+  const redLoc = red.headers.get("location") ?? "";
+  assert(red.status === 302, "direct link → 302 redirect");
+  assert(
+    redLoc.startsWith("https://demo-shop.myshopify.com/products/" + HANDLE),
+    "direct link points at the Shopify product page",
+  );
+  assert(redLoc.includes(`utm_campaign=${demoMe.refCode}`), "direct link carries the creator's UTM");
+
+  const mineLinks = await (
+    await fetch(`${BASE}/links/mine`, { headers: demo.headers() })
+  ).json();
+  const mineRow = mineLinks.find((l) => l.id === link1.id);
+  assert(
+    !!mineRow && mineRow.publicUrl.endsWith(`/${HANDLE}`) && /\/api\/r\//.test(mineRow.redirectUrl),
+    "My Links exposes BOTH link types per product",
+  );
+
+  await mongoose.disconnect();
 
   log("\n✅ ALL ONBOARDING / APPROVAL / STATUS-GUARD CHECKS PASSED");
 } catch (e) {

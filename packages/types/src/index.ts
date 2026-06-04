@@ -186,6 +186,35 @@ export interface ProductVariant {
   inventoryQuantity?: number;
 }
 
+/**
+ * Admin-authored posting brief attached to a product. Per-format guidance plus a
+ * compliance pack (disclosure + prohibited claims) — important for health
+ * products in India (ASCI/FSSAI/DMR Act) where the brand is co-liable for what
+ * affiliates post. All fields optional; empty ⇒ not set.
+ */
+export interface ContentGuidelines {
+  /** Format-specific posting guidance (free text). */
+  reel?: string;
+  story?: string;
+  post?: string;
+  /** Overall talking points / do's & don'ts that apply to every format. */
+  generalNotes?: string;
+  /**
+   * Mandatory disclosure the creator MUST include. Affiliate commission is a
+   * "material connection" under FTC + India's ASCI guidelines, so every post
+   * must disclose — placed upfront, not buried in hashtags.
+   */
+  disclosure?: string;
+  /** Hashtags the creator MUST include (e.g. ["#ad", "#BJWHealth"]). */
+  requiredHashtags?: string[];
+  /** Accounts the creator MUST tag (e.g. ["@bjwhealth"]). */
+  requiredMentions?: string[];
+  /** Claims the creator may NOT make (health compliance — DMR Act 1954 / FSSAI). */
+  prohibitedClaims?: string;
+  /** Mandatory health disclaimer line shown with every post. */
+  healthDisclaimer?: string;
+}
+
 export interface Product {
   id: string;
   shopifyProductId: string;
@@ -206,6 +235,14 @@ export interface Product {
    * null/undefined ⇒ no override → the creator's default rate applies.
    */
   commissionRate?: number | null;
+  /**
+   * Admin-authored content brief. null ⇒ none set. On CREATOR-facing responses
+   * this is only populated when `guidelinesVisibleToCreators` is true (the admin
+   * surface always returns it so it can be edited).
+   */
+  contentGuidelines?: ContentGuidelines | null;
+  /** Whether creators can see the content brief (admin-controlled). */
+  guidelinesVisibleToCreators?: boolean;
 }
 
 /** Public projection — safe for the unauthenticated storefront (no internal IDs/SKU/inventory). */
@@ -240,9 +277,18 @@ export interface CreatorLink {
   /** Product handle for product links; undefined for store links. */
   productHandle?: string;
   title: string;
-  /** Public storefront URL the creator shares. */
+  /**
+   * LINK TYPE 1 — the Taravee storefront page (`/{username}/{handle}`). Shows
+   * full product details on the creator's branded page; best for bio/Story/
+   * multi-item content. Attribution fires when the shopper taps Buy there.
+   */
   publicUrl: string;
-  /** API redirect URL (`/api/r/:id`) that stamps UTM and 302s to Shopify. */
+  /**
+   * LINK TYPE 2 — direct to the store. API redirect (`/api/r/:id`) that records
+   * the click, stamps UTM, and 302s straight to the Shopify product (fewer clicks
+   * to checkout; best for a single-product Reel/launch). Same attribution as the
+   * storefront link.
+   */
   redirectUrl: string;
   clicks: number;
   createdAt: string;

@@ -16,8 +16,11 @@ import { CreatorActiveGuard } from "../common/guards/creator-active.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import {
   BulkCommissionDto,
+  BulkGuidelinesVisibilityDto,
   BulkListedDto,
   SetCommissionDto,
+  SetGuidelinesDto,
+  SetGuidelinesVisibilityDto,
   SetListedDto,
 } from "./dto/shopify.dto";
 import { ProductsService } from "./products.service";
@@ -57,6 +60,13 @@ export class AdminProductsController {
     return this.products.bulkSetCommission(dto.ids, dto.commissionRate);
   }
 
+  @Patch("bulk-guidelines-visibility")
+  bulkGuidelinesVisibility(
+    @Body() dto: BulkGuidelinesVisibilityDto,
+  ): Promise<{ matched: number; modified: number }> {
+    return this.products.bulkSetGuidelinesVisibility(dto.ids, dto.visible);
+  }
+
   @Patch(":id/listed")
   async setListed(
     @Param("id") id: string,
@@ -73,6 +83,28 @@ export class AdminProductsController {
     @Body() dto: SetCommissionDto,
   ): Promise<ProductDto> {
     const product = await this.products.setCommission(id, dto.commissionRate);
+    if (!product) throw new NotFoundException("Product not found");
+    return product;
+  }
+
+  /** Set a product's content brief and (optionally) its creator-visibility. */
+  @Patch(":id/guidelines")
+  async setGuidelines(
+    @Param("id") id: string,
+    @Body() dto: SetGuidelinesDto,
+  ): Promise<ProductDto> {
+    const product = await this.products.setGuidelines(id, dto.guidelines, dto.visible);
+    if (!product) throw new NotFoundException("Product not found");
+    return product;
+  }
+
+  /** Quick toggle: show/hide a product's content brief from creators. */
+  @Patch(":id/guidelines-visibility")
+  async setGuidelinesVisibility(
+    @Param("id") id: string,
+    @Body() dto: SetGuidelinesVisibilityDto,
+  ): Promise<ProductDto> {
+    const product = await this.products.setGuidelinesVisibility(id, dto.visible);
     if (!product) throw new NotFoundException("Product not found");
     return product;
   }

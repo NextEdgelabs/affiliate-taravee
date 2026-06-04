@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Product as ProductDto, PublicProduct as PublicProductDto } from "@taravee/types";
+import type {
+  ContentGuidelines,
+  Product as ProductDto,
+  PublicProduct as PublicProductDto,
+} from "@taravee/types";
 import { Model } from "mongoose";
 
 import {
@@ -41,8 +45,14 @@ export class ProductsService {
           lastSyncedAt: new Date(),
         },
         // App-owned fields are set ONLY on insert so a re-sync never clobbers
-        // admin curation (listed) or the per-product commission override.
-        $setOnInsert: { listed: false, commissionRate: null },
+        // admin curation (listed), the per-product commission override, or the
+        // admin-authored content guidelines + their visibility.
+        $setOnInsert: {
+          listed: false,
+          commissionRate: null,
+          contentGuidelines: null,
+          guidelinesVisibleToCreators: false,
+        },
       },
       { upsert: true },
     );
@@ -98,14 +108,14 @@ export class ProductsService {
       .sort({ title: 1 })
       .limit(limit)
       .exec();
-    return docs.map((d) => this.toDto(d));
+    return docs.map((d) => this.toCreatorDto(d));
   }
 
   async findListedByHandle(handle: string): Promise<ProductDto | null> {
     const doc = await this.model
       .findOne({ ...ProductsService.PUBLIC_FILTER, handle })
       .exec();
-    return doc ? this.toDto(doc) : null;
+    return doc ? this.toCreatorDto(doc) : null;
   }
 
   /** Public projections for the unauthenticated storefront (no internal IDs/SKU/inventory). */
@@ -169,6 +179,44 @@ export class ProductsService {
   }
 
   /**
+   * Set a single product's content brief and (optionally) its creator-visibility
+   * in one call. `guidelines === null` clears the brief. App-owned — sync never
+   * touches these, so the value persists across re-syncs.
+   */
+  async setGuidelines(
+    id: string,
+    guidelines: ContentGuidelines | null | undefined,
+    visible?: boolean,
+  ): Promise<ProductDto | null> {
+    const update: Record<string, unknown> = {};
+    // undefined ⇒ leave the brief untouched; null ⇒ clear it; object ⇒ replace.
+    if (guidelines !== undefined) update.contentGuidelines = guidelines;
+    if (typeof visible === "boolean") update.guidelinesVisibleToCreators = visible;
+    const doc = await this.model.findByIdAndUpdate(id, update, { new: true }).exec();
+    return doc ? this.toDto(doc) : null;
+  }
+
+  /** Flip creator-visibility of a single product's content brief. */
+  async setGuidelinesVisibility(id: string, visible: boolean): Promise<ProductDto | null> {
+    const doc = await this.model
+      .findByIdAndUpdate(id, { guidelinesVisibleToCreators: visible }, { new: true })
+      .exec();
+    return doc ? this.toDto(doc) : null;
+  }
+
+  /** Bulk show/hide content briefs to creators. Skips products deleted in Shopify. */
+  async bulkSetGuidelinesVisibility(
+    ids: string[],
+    visible: boolean,
+  ): Promise<{ matched: number; modified: number }> {
+    const res = await this.model.updateMany(
+      { _id: { $in: ids }, deletedInShopify: false },
+      { $set: { guidelinesVisibleToCreators: visible } },
+    );
+    return { matched: res.matchedCount ?? 0, modified: res.modifiedCount ?? 0 };
+  }
+
+  /**
    * Resolve the effective commission rate for an attributed sale: the product's
    * override when explicitly set (incl. an intentional 0%), else the creator's
    * default. Branch on `== null` ONLY — never truthiness — so 0% is honored.
@@ -215,7 +263,36 @@ export class ProductsService {
       listed: doc.listed,
       listedAt: doc.listedAt?.toISOString(),
       commissionRate: doc.commissionRate ?? null,
+      contentGuidelines: doc.contentGuidelines
+        ? this.guidelinesToDto(doc.contentGuidelines)
+        : null,
+      guidelinesVisibleToCreators: doc.guidelinesVisibleToCreators ?? false,
     };
+  }
+
+  private guidelinesToDto(g: ContentGuidelines): ContentGuidelines {
+    return {
+      reel: g.reel,
+      story: g.story,
+      post: g.post,
+      generalNotes: g.generalNotes,
+      disclosure: g.disclosure,
+      requiredHashtags: g.requiredHashtags ?? undefined,
+      requiredMentions: g.requiredMentions ?? undefined,
+      prohibitedClaims: g.prohibitedClaims,
+      healthDisclaimer: g.healthDisclaimer,
+    };
+  }
+
+  /**
+   * Creator-facing projection: same as `toDto` but the content brief is hidden
+   * unless the admin made it visible (the flag is always returned so the UI knows
+   * whether a brief exists but is hidden).
+   */
+  private toCreatorDto(doc: ShopifyProductDocument): ProductDto {
+    const dto = this.toDto(doc);
+    if (!dto.guidelinesVisibleToCreators) dto.contentGuidelines = null;
+    return dto;
   }
 
   /** Public projection: omits Shopify IDs, SKU, and inventory quantity. */

@@ -23,7 +23,9 @@ export default async function LinksPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">My Links</h1>
           <p className="text-muted-foreground">
-            Share these — every visit is tracked and attributed to you.
+            Each link comes in two flavours — a <strong>storefront page</strong> (full details,
+            great for your bio/Stories) and a <strong>direct-to-store</strong> link (straight to
+            checkout). Both track to you.
           </p>
         </div>
         <CreateLinkButton type="store" title="My store" label="Create store link" variant="outline" />
@@ -39,15 +41,14 @@ export default async function LinksPage() {
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Public link</TableHead>
+                <TableHead>Links</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
-                <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {links.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     No links yet — create one from the Products page or add a store link.
                   </TableCell>
                 </TableRow>
@@ -60,13 +61,29 @@ export default async function LinksPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">{l.title}</TableCell>
-                    <TableCell className="max-w-[280px] truncate text-muted-foreground">
-                      {l.publicUrl}
+                    <TableCell>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="w-20 justify-center">
+                            Storefront
+                          </Badge>
+                          <span className="max-w-[260px] truncate text-xs text-muted-foreground">
+                            {l.publicUrl}
+                          </span>
+                          <CopyButton value={l.publicUrl} label="Copy" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="w-20 justify-center">
+                            Direct
+                          </Badge>
+                          <span className="max-w-[260px] truncate text-xs text-muted-foreground">
+                            {l.redirectUrl}
+                          </span>
+                          <CopyButton value={l.redirectUrl} label="Copy" />
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{l.clicks}</TableCell>
-                    <TableCell className="text-right">
-                      <CopyButton value={l.publicUrl} />
-                    </TableCell>
                   </TableRow>
                 ))
               )}
