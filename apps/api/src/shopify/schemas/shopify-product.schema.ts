@@ -24,6 +24,21 @@ class Image {
 }
 const ImageSchema = SchemaFactory.createForClass(Image);
 
+/** Admin-authored posting brief — per-format guidance + a compliance pack. */
+@Schema({ _id: false })
+class ContentGuidelines {
+  @Prop() reel?: string;
+  @Prop() story?: string;
+  @Prop() post?: string;
+  @Prop() generalNotes?: string;
+  @Prop() disclosure?: string;
+  @Prop({ type: [String], default: undefined }) requiredHashtags?: string[];
+  @Prop({ type: [String], default: undefined }) requiredMentions?: string[];
+  @Prop() prohibitedClaims?: string;
+  @Prop() healthDisclaimer?: string;
+}
+const ContentGuidelinesSchema = SchemaFactory.createForClass(ContentGuidelines);
+
 @Schema({ timestamps: true })
 export class ShopifyProduct {
   @Prop({ required: true, unique: true })
@@ -76,6 +91,17 @@ export class ShopifyProduct {
    */
   @Prop({ type: Number, default: null })
   commissionRate?: number | null;
+
+  /**
+   * APP-OWNED content brief (per-format guidance + compliance). Set by admin,
+   * never overwritten by sync (only `$setOnInsert` initializes it). null ⇒ unset.
+   */
+  @Prop({ type: ContentGuidelinesSchema, default: null })
+  contentGuidelines?: ContentGuidelines | null;
+
+  /** APP-OWNED: whether creators can see the content brief. Never synced. */
+  @Prop({ default: false })
+  guidelinesVisibleToCreators: boolean;
 
   @Prop({ default: false })
   deletedInShopify: boolean;

@@ -24,12 +24,29 @@ import { useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 
+import { ProductGuidelinesDialog } from "./product-guidelines-dialog";
 import { ProductListedToggle } from "./product-listed-toggle";
 
 function formatRate(rate: number | null | undefined): string {
   if (rate == null) return "—";
   const pct = rate * 100;
   return `${Number.isInteger(pct) ? pct : pct.toFixed(1)}%`;
+}
+
+function hasGuidelines(p: Product): boolean {
+  const g = p.contentGuidelines;
+  if (!g) return false;
+  return Boolean(
+    g.reel ||
+      g.story ||
+      g.post ||
+      g.generalNotes ||
+      g.disclosure ||
+      g.prohibitedClaims ||
+      g.healthDisclaimer ||
+      g.requiredHashtags?.length ||
+      g.requiredMentions?.length,
+  );
 }
 
 export function CatalogTable({ items }: { items: Product[] }) {
@@ -39,6 +56,8 @@ export function CatalogTable({ items }: { items: Product[] }) {
   // Commission dialog state — `ids` it acts on (one for a single row, many for bulk).
   const [dialogIds, setDialogIds] = useState<string[] | null>(null);
   const [pctInput, setPctInput] = useState("");
+  // Content-guidelines editor — the product whose brief is being edited.
+  const [guideProduct, setGuideProduct] = useState<Product | null>(null);
 
   const allChecked = items.length > 0 && items.every((p) => selected.has(p.id));
   const toggle = (id: string) =>
@@ -86,6 +105,18 @@ export function CatalogTable({ items }: { items: Product[] }) {
         }),
       (d) =>
         `${(d as { modified?: number })?.modified ?? 0} ${listed ? "listed" : "unlisted"}`,
+    );
+  }
+
+  function bulkGuidelinesVisibility(visible: boolean) {
+    return mutate(
+      () =>
+        apiFetch("/admin/products/bulk-guidelines-visibility", {
+          method: "PATCH",
+          body: JSON.stringify({ ids: ids(), visible }),
+        }),
+      (d) =>
+        `Guidelines ${visible ? "shown" : "hidden"} on ${(d as { modified?: number })?.modified ?? 0}`,
     );
   }
 
@@ -144,6 +175,22 @@ export function CatalogTable({ items }: { items: Product[] }) {
           >
             Set commission…
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => bulkGuidelinesVisibility(true)}
+          >
+            Show guide
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => bulkGuidelinesVisibility(false)}
+          >
+            Hide guide
+          </Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={clear}>
             Clear
           </Button>
@@ -167,13 +214,14 @@ export function CatalogTable({ items }: { items: Product[] }) {
             <TableHead>Type</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Commission</TableHead>
+            <TableHead>Guidelines</TableHead>
             <TableHead className="text-right">Listed</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+              <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                 No products yet. Connect Shopify and run a sync.
               </TableCell>
             </TableRow>
@@ -219,6 +267,28 @@ export function CatalogTable({ items }: { items: Product[] }) {
                     }}
                   >
                     Edit
+                  </button>
+                </TableCell>
+                <TableCell>
+                  {hasGuidelines(p) ? (
+                    <span
+                      className={
+                        p.guidelinesVisibleToCreators
+                          ? "text-xs font-medium text-emerald-600"
+                          : "text-xs text-muted-foreground"
+                      }
+                    >
+                      {p.guidelinesVisibleToCreators ? "Visible" : "Hidden"}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                  <button
+                    type="button"
+                    className="ml-2 text-xs text-primary underline-offset-2 hover:underline"
+                    onClick={() => setGuideProduct(p)}
+                  >
+                    {hasGuidelines(p) ? "Edit" : "Add"}
                   </button>
                 </TableCell>
                 <TableCell className="text-right">
@@ -270,6 +340,14 @@ export function CatalogTable({ items }: { items: Product[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {guideProduct && (
+        <ProductGuidelinesDialog
+          key={guideProduct.id}
+          product={guideProduct}
+          onClose={() => setGuideProduct(null)}
+        />
+      )}
     </>
   );
 }

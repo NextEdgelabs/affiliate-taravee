@@ -1,4 +1,4 @@
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -6,12 +6,15 @@ import {
   IsBoolean,
   IsMongoId,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 
 // Trim pasted values before validation (transform runs first when transform:true).
@@ -78,4 +81,64 @@ export class BulkCommissionDto {
   @Min(0)
   @Max(1)
   commissionRate: number | null;
+}
+
+// ─── Content guidelines (admin-authored posting brief) ───────────────────────
+
+const LONG = 4000;
+const SHORT = 280;
+
+export class ContentGuidelinesDto {
+  @IsOptional() @IsString() @MaxLength(LONG) reel?: string;
+  @IsOptional() @IsString() @MaxLength(LONG) story?: string;
+  @IsOptional() @IsString() @MaxLength(LONG) post?: string;
+  @IsOptional() @IsString() @MaxLength(LONG) generalNotes?: string;
+  @IsOptional() @IsString() @MaxLength(SHORT) disclosure?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  requiredHashtags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  requiredMentions?: string[];
+
+  @IsOptional() @IsString() @MaxLength(LONG) prohibitedClaims?: string;
+  @IsOptional() @IsString() @MaxLength(LONG) healthDisclaimer?: string;
+}
+
+export class SetGuidelinesDto {
+  // null clears the brief; an object replaces it. Validated only when an object.
+  @IsOptional()
+  @ValidateIf((o) => o.guidelines !== null)
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ContentGuidelinesDto)
+  guidelines?: ContentGuidelinesDto | null;
+
+  @IsOptional()
+  @IsBoolean()
+  visible?: boolean;
+}
+
+export class SetGuidelinesVisibilityDto {
+  @IsBoolean()
+  visible: boolean;
+}
+
+export class BulkGuidelinesVisibilityDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(500)
+  @IsMongoId({ each: true })
+  ids: string[];
+
+  @IsBoolean()
+  visible: boolean;
 }

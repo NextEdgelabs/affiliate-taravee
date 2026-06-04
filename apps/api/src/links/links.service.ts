@@ -61,6 +61,24 @@ export class LinksService {
     if (input.type === "product" && !input.productHandle) {
       throw new BadRequestException("productHandle is required for product links");
     }
+    // Idempotent: one active link per (creator, type, product). Lets the UI offer
+    // "Get links" on a product without spawning duplicate rows on repeat clicks —
+    // and both link types (storefront + direct) hang off this single record.
+    const existing = await this.links
+      .findOne({
+        creatorId: new Types.ObjectId(creatorUserId),
+        type: input.type,
+        productHandle: input.type === "product" ? input.productHandle : { $in: [null, undefined] },
+        status: "active",
+      })
+      .exec();
+    if (existing) {
+      const [count] = await this.clicks.aggregate<{ n: number }>([
+        { $match: { linkId: existing._id, isBot: false } },
+        { $group: { _id: "$linkId", n: { $sum: 1 } } },
+      ]);
+      return this.toDto(existing, count?.n ?? 0);
+    }
     const doc = await this.links.create({
       creatorId: new Types.ObjectId(creatorUserId),
       creatorRefCode: profile.refCode,

@@ -13,8 +13,10 @@ export default async function CatalogPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
         <p className="text-muted-foreground">
-          Synced from Shopify. Select products to bulk list/unlist or set a commission rate. A
-          product&apos;s commission overrides the creator&apos;s default for sales via its link.
+          Synced from Shopify. Select products to bulk list/unlist, set a commission rate, or
+          show/hide content guidelines. A product&apos;s commission overrides the creator&apos;s
+          default for sales via its link; its guidelines tell creators how to post it (Reel /
+          Story / Post) and which claims to avoid.
         </p>
       </div>
 
