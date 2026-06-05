@@ -14,6 +14,7 @@ import { useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 
+import { CampaignLinkForm } from "./campaign-link-form";
 import { CopyButton } from "./copy-button";
 import { GuidelinesView } from "./guidelines-view";
 
@@ -102,6 +103,11 @@ export function ProductLinksDialog({ product }: { product: Product }) {
                   label="Direct to product"
                   hint="Sends shoppers straight to this product on the store — fewest clicks, best for a single-product Reel or a launch."
                   value={link.redirectUrl}
+                />
+                <CampaignLinkForm
+                  type="product"
+                  productHandle={product.handle}
+                  acknowledgedGuidelinesHash={mustAccept ? product.guidelinesHash : undefined}
                 />
               </>
             ) : mustAccept ? (

@@ -5,11 +5,17 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { AttributionStatus, OrderSummary } from "@taravee/types";
+import type {
+  AttributionStatus,
+  CampaignAnalytics,
+  OrderSummary,
+} from "@taravee/types";
 import { Model, Types } from "mongoose";
 
+import { UTM_MEDIUM, UTM_SOURCE } from "../common/attribution/utm.util";
 import { CommissionsService } from "../commissions/commissions.service";
 import { CreatorsService } from "../creators/creators.service";
+import { LinksService } from "../links/links.service";
 import { ProductsService } from "../shopify/products.service";
 import { ShopifyService } from "../shopify/shopify.service";
 import {
@@ -30,6 +36,7 @@ export class OrdersService {
     private readonly creators: CreatorsService,
     private readonly commissions: CommissionsService,
     private readonly products: ProductsService,
+    private readonly links: LinksService,
   ) {}
 
   /** Upsert a raw order from the orders/create webhook (attribution runs async). */
@@ -157,6 +164,10 @@ export class OrdersService {
           order.attributedRefCode = ref;
           order.attributedCreatorId = profile.userId;
           order.attributedProductHandle = att.productHandle ?? undefined;
+          // Tie the order to the specific campaign link (utm_content), from the
+          // SAME touch that won the refCode, guarding it belongs to this creator.
+          const linkId = att.lastRefCode ? att.lastLinkId : att.firstLinkId;
+          await this.applyCampaign(order, linkId, profile.userId);
           await order.save();
           // Defensive: neutralize any live commission for this order on another creator.
           await this.commissions.reverseForOrderExcept(
@@ -181,6 +192,9 @@ export class OrdersService {
         } else {
           order.attributionStatus = "unattributed";
           order.attributionSource = "none";
+          order.attributedLinkId = undefined;
+          order.attributedCampaignKey = undefined;
+          order.attributedCampaignLabel = undefined;
           await order.save();
         }
       } catch (err) {
@@ -293,6 +307,86 @@ export class OrdersService {
       ]),
     ]);
     return { orders, revenue: revenueAgg[0]?.total ?? 0 };
+  }
+
+  /**
+   * Resolve utm_content (linkId) → campaign and stamp it on the order. Anti-forgery:
+   * a linkId that doesn't belong to the attributed creator is ignored (a shopper
+   * could craft any utm_content). Best-effort: Shopify may drop utm_content, in
+   * which case the order stays attributed by refCode with no campaign.
+   */
+  private async applyCampaign(
+    order: ShopifyOrderDocument,
+    linkId: string | null,
+    creatorUserId: Types.ObjectId,
+  ): Promise<void> {
+    order.attributedLinkId = undefined;
+    order.attributedCampaignKey = undefined;
+    order.attributedCampaignLabel = undefined;
+    if (!linkId) return;
+    const link = await this.links.findById(linkId);
+    if (!link || !link.creatorId.equals(creatorUserId)) return;
+    order.attributedLinkId = link._id;
+    order.attributedCampaignKey = link.campaignKey;
+    order.attributedCampaignLabel = link.campaignLabel;
+  }
+
+  /** Orders + revenue grouped by the attributed link (campaign). */
+  async ordersByLinkForCreator(
+    creatorId: string,
+  ): Promise<Map<string, { orders: number; revenue: number }>> {
+    const rows = await this.model.aggregate<{
+      _id: Types.ObjectId;
+      orders: number;
+      revenue: number;
+    }>([
+      {
+        $match: {
+          attributedCreatorId: new Types.ObjectId(creatorId),
+          attributionStatus: "attributed",
+          attributedLinkId: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: "$attributedLinkId",
+          orders: { $sum: 1 },
+          revenue: { $sum: "$subtotal" },
+        },
+      },
+    ]);
+    return new Map(
+      rows.map((r) => [r._id.toString(), { orders: r.orders, revenue: r.revenue }]),
+    );
+  }
+
+  /**
+   * Per-campaign rollup for the creator dashboard: every link (default + named
+   * campaigns) with its EXACT click count and best-effort orders/revenue.
+   */
+  async campaignAnalyticsForCreator(creatorId: string): Promise<CampaignAnalytics[]> {
+    const [links, byLink] = await Promise.all([
+      this.links.listForCreator(creatorId),
+      this.ordersByLinkForCreator(creatorId),
+    ]);
+    return links.map((l) => {
+      const o = byLink.get(l.id);
+      return {
+        linkId: l.id,
+        type: l.type,
+        productHandle: l.productHandle,
+        collectionSlug: l.collectionSlug,
+        title: l.title,
+        campaignLabel: l.campaignLabel,
+        campaignKey: l.campaignKey,
+        utmSource: l.utmSourceOverride || UTM_SOURCE,
+        utmMedium: l.utmMediumOverride || UTM_MEDIUM,
+        clicks: l.clicks,
+        orders: o?.orders ?? 0,
+        revenue: o?.revenue ?? 0,
+        currency: "INR",
+      };
+    });
   }
 
   toDto(doc: ShopifyOrderDocument): OrderSummary {

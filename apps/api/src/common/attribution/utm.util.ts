@@ -12,10 +12,14 @@ export function buildAttributionUtm(
   refCode: string,
   linkId: string,
   productHandle?: string,
+  opts?: { sourceOverride?: string; mediumOverride?: string },
 ): AttributionUtm {
   return {
-    source: UTM_SOURCE,
-    medium: UTM_MEDIUM,
+    // Channel (source/medium) is presentational and may be overridden per campaign.
+    source: opts?.sourceOverride?.trim() || UTM_SOURCE,
+    medium: opts?.mediumOverride?.trim() || UTM_MEDIUM,
+    // LOAD-BEARING for attribution — campaign is always the creator refCode,
+    // content is always the linkId. Never overridden.
     campaign: refCode,
     content: linkId,
     term: productHandle,
@@ -41,6 +45,14 @@ export function refFromUtmParameters(
 ): string | null {
   const campaign = params?.campaign?.trim();
   return campaign ? campaign : null;
+}
+
+/** Reader: pull the linkId (utm_content) out of Shopify UTM parameters. */
+export function contentFromUtmParameters(
+  params?: { content?: string | null } | null,
+): string | null {
+  const content = params?.content?.trim();
+  return content ? content : null;
 }
 
 /** Reader fallback: pull refCode from a raw landing page URL (utm_campaign or ref). */

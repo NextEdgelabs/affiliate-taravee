@@ -1,13 +1,18 @@
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class CreateLinkDto {
-  @IsIn(["product", "store"])
-  type: "product" | "store";
+  @IsIn(["product", "store", "collection"])
+  type: "product" | "store" | "collection";
 
   @IsOptional()
   @IsString()
   @MaxLength(200)
   productHandle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  collectionSlug?: string;
 
   @IsOptional()
   @IsString()
@@ -22,4 +27,25 @@ export class CreateLinkDto {
   @IsString()
   @MaxLength(64)
   acknowledgedGuidelinesHash?: string;
+
+  // ── Campaign tagging (optional — absent ⇒ the single default link) ──────────
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  campaignLabel?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  utmSourceOverride?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  utmMediumOverride?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
 }

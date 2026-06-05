@@ -59,6 +59,17 @@ export class ShopifyOrder {
   @Prop()
   firstRefCode?: string;
 
+  /** The specific link (utm_content) that won attribution — ties the order to a
+   *  campaign. Best-effort: null if Shopify dropped utm_content. */
+  @Prop({ type: Types.ObjectId, ref: "CreatorLink" })
+  attributedLinkId?: Types.ObjectId;
+
+  @Prop()
+  attributedCampaignKey?: string;
+
+  @Prop()
+  attributedCampaignLabel?: string;
+
   /** Attribution-job retry counter (customerJourneySummary is async). */
   @Prop({ default: 0 })
   attempts: number;
