@@ -238,6 +238,8 @@ export class CreatorsService {
         name: u?.name ?? p.displayName,
         status: (u?.status ?? "pending") as UserStatus,
         rejectionReason: p.rejectionReason,
+        linksSuspended: p.linksSuspended ?? false,
+        linksSuspendedReason: p.linksSuspendedReason,
       };
     });
   }
@@ -293,6 +295,24 @@ export class CreatorsService {
     const profile = await this.model.findById(id).exec();
     if (!profile) throw new NotFoundException("Creator not found");
     await this.users.updateStatus(profile.userId.toString(), status);
+  }
+
+  /** Compliance kill-switch: halt (or resume) ALL of a creator's live links. */
+  async setLinksSuspended(
+    id: string,
+    suspended: boolean,
+    reason?: string,
+  ): Promise<CreatorProfileDocument> {
+    const profile = await this.model.findByIdAndUpdate(
+      id,
+      {
+        linksSuspended: suspended,
+        linksSuspendedReason: suspended ? reason : undefined,
+      },
+      { new: true },
+    );
+    if (!profile) throw new NotFoundException("Creator not found");
+    return profile;
   }
 
   async setPayout(

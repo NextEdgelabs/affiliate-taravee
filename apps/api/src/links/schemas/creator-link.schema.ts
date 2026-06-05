@@ -28,6 +28,27 @@ export class CreatorLink {
 
   @Prop({ enum: ["active", "disabled"], default: "active" })
   status: "active" | "disabled";
+
+  // ── Compliance acknowledgement (proof the creator accepted the brief) ──────
+  @Prop()
+  acknowledgedGuidelinesHash?: string;
+
+  @Prop()
+  acknowledgedAt?: Date;
+
+  /** Snapshot of the rules in force at acknowledgement (survives later edits). */
+  @Prop()
+  acknowledgedDisclosure?: string;
+
+  @Prop()
+  acknowledgedProhibitedClaims?: string;
+
+  // ── Takedown / kill-switch ─────────────────────────────────────────────────
+  @Prop()
+  disabledReason?: string;
+
+  @Prop()
+  disabledAt?: Date;
 }
 
 export const CreatorLinkSchema = SchemaFactory.createForClass(CreatorLink);

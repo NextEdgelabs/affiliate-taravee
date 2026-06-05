@@ -120,6 +120,17 @@ export function CatalogTable({ items }: { items: Product[] }) {
     );
   }
 
+  function setHold(id: string, hold: boolean) {
+    return mutate(
+      () =>
+        apiFetch(`/admin/products/${id}/compliance-hold`, {
+          method: "PATCH",
+          body: JSON.stringify({ hold, reason: hold ? "Compliance hold" : undefined }),
+        }),
+      () => (hold ? "Product put on compliance hold" : "Compliance hold released"),
+    );
+  }
+
   async function submitCommission(value: number | null) {
     const targets = dialogIds ?? [];
     if (targets.length === 0) return;
@@ -290,6 +301,27 @@ export function CatalogTable({ items }: { items: Product[] }) {
                   >
                     {hasGuidelines(p) ? "Edit" : "Add"}
                   </button>
+                  <span className="mt-0.5 block">
+                    {p.complianceHold ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="text-xs font-medium text-destructive underline-offset-2 hover:underline"
+                        onClick={() => setHold(p.id, false)}
+                      >
+                        ⛔ On hold · release
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                        onClick={() => setHold(p.id, true)}
+                      >
+                        Hold
+                      </button>
+                    )}
+                  </span>
                 </TableCell>
                 <TableCell className="text-right">
                   <ProductListedToggle id={p.id} listed={p.listed} />

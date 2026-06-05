@@ -64,6 +64,16 @@ export class SetCreatorStatusDto {
   status: "active" | "suspended";
 }
 
+export class SuspendLinksDto {
+  @IsBoolean()
+  suspended: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  reason?: string;
+}
+
 export class AdminCreateCreatorDto {
   @IsEmail()
   email: string;

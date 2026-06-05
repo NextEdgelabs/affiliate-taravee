@@ -19,6 +19,7 @@ import {
   BulkGuidelinesVisibilityDto,
   BulkListedDto,
   SetCommissionDto,
+  SetComplianceHoldDto,
   SetGuidelinesDto,
   SetGuidelinesVisibilityDto,
   SetListedDto,
@@ -105,6 +106,17 @@ export class AdminProductsController {
     @Body() dto: SetGuidelinesVisibilityDto,
   ): Promise<ProductDto> {
     const product = await this.products.setGuidelinesVisibility(id, dto.visible);
+    if (!product) throw new NotFoundException("Product not found");
+    return product;
+  }
+
+  /** Compliance hold (kill-switch): stop all creator redirects to this product. */
+  @Patch(":id/compliance-hold")
+  async setComplianceHold(
+    @Param("id") id: string,
+    @Body() dto: SetComplianceHoldDto,
+  ): Promise<ProductDto> {
+    const product = await this.products.setComplianceHold(id, dto.hold, dto.reason);
     if (!product) throw new NotFoundException("Product not found");
     return product;
   }

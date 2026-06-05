@@ -29,8 +29,17 @@ export function MarkPaidButton({
             toast.error("Could not mark paid");
             return;
           }
-          const r = (await res.json()) as { paid: number };
-          toast.success(`Marked ${r.paid} commission(s) paid`);
+          const r = (await res.json()) as {
+            paid: number;
+            grossPaid: number;
+            clawbackRecovered: number;
+            netPaid: number;
+          };
+          toast.success(
+            r.clawbackRecovered > 0
+              ? `Marked ${r.paid} paid · net ${r.netPaid} after ${r.clawbackRecovered} clawback`
+              : `Marked ${r.paid} commission(s) paid`,
+          );
           router.refresh();
         } catch {
           toast.error("Could not reach the server");

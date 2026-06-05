@@ -201,9 +201,11 @@ export function ProductGuidelinesDialog({
 
           <label className="flex items-center justify-between rounded-md border p-3">
             <span className="text-sm">
-              <span className="font-medium">Visible to creators</span>
+              <span className="font-medium">Show creative guidance to creators</span>
               <span className="block text-xs text-muted-foreground">
-                When on, creators see these guidelines (with a “follow strictly” notice) on the product.
+                Controls the Reel / Story / Post tips only. The compliance pack (disclosure,
+                prohibited claims, health disclaimer, required tags) is <strong>always</strong>{" "}
+                shown — and creators must accept it before they can create a link.
               </span>
             </span>
             <Switch checked={visible} onCheckedChange={setVisible} disabled={busy} />

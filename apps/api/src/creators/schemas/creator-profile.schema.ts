@@ -86,6 +86,17 @@ export class CreatorProfile {
 
   @Prop()
   rejectionReason?: string;
+
+  /**
+   * Compliance kill-switch: when true, ALL of this creator's redirects (incl.
+   * rowless storefront links) stop sending traffic to the store. Lets the brand
+   * halt a creator who posted a non-compliant claim without deleting the account.
+   */
+  @Prop({ default: false })
+  linksSuspended: boolean;
+
+  @Prop()
+  linksSuspendedReason?: string;
 }
 
 export const CreatorProfileSchema = SchemaFactory.createForClass(CreatorProfile);

@@ -41,6 +41,7 @@ export default async function AdminPayoutsPage() {
                 <TableHead>Payout to</TableHead>
                 <TableHead className="text-right">Pending</TableHead>
                 <TableHead className="text-right">Owed (approved)</TableHead>
+                <TableHead className="text-right">Clawback</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -48,7 +49,7 @@ export default async function AdminPayoutsPage() {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     No approved creators yet.
                   </TableCell>
                 </TableRow>
@@ -71,6 +72,15 @@ export default async function AdminPayoutsPage() {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {money(r.approvedAmount, r.currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {r.clawbackOutstanding > 0 ? (
+                        <span className="text-destructive">
+                          −{money(r.clawbackOutstanding, r.currency)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {money(r.paidAmount, r.currency)}

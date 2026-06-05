@@ -413,16 +413,43 @@ try {
   });
   assert(hide.status === 200, "toggle guidelines visibility off → 200");
   const cp3 = await findCreatorProduct();
-  assert(cp3.contentGuidelines == null, "creator brief hidden again after toggle");
+  // The compliance pack is NEVER suppressible — only the creative guidance hides.
+  assert(cp3.contentGuidelines != null, "compliance pack STAYS visible when guidance is hidden");
+  assert(
+    (cp3.contentGuidelines.disclosure ?? "").includes("#ad"),
+    "disclosure stays visible to creators",
+  );
+  assert(!cp3.contentGuidelines.reel, "creative guidance (reel) IS hidden when toggle off");
+  const ghash = cp3.guidelinesHash;
+  assert(typeof ghash === "string" && ghash.length > 0, "product exposes a guidelinesHash (ack required)");
+
+  log("\n▶ acknowledgement gate");
+  const noAck = await fetch(`${BASE}/links`, {
+    method: "POST",
+    headers: demo.headers(),
+    body: JSON.stringify({ type: "product", productHandle: HANDLE, title: "Verify" }),
+  });
+  assert(noAck.status === 422, "link create BLOCKED without acknowledging the guidelines (422)");
+  const badAck = await fetch(`${BASE}/links`, {
+    method: "POST",
+    headers: demo.headers(),
+    body: JSON.stringify({ type: "product", productHandle: HANDLE, acknowledgedGuidelinesHash: "deadbeef" }),
+  });
+  assert(badAck.status === 422, "link create BLOCKED with a stale/wrong hash (422)");
 
   // Two link types: creator gets a storefront link + a direct-to-Shopify link.
   const mk = await fetch(`${BASE}/links`, {
     method: "POST",
     headers: demo.headers(),
-    body: JSON.stringify({ type: "product", productHandle: HANDLE, title: "Verify" }),
+    body: JSON.stringify({
+      type: "product",
+      productHandle: HANDLE,
+      title: "Verify",
+      acknowledgedGuidelinesHash: ghash,
+    }),
   });
   const link1 = await mk.json();
-  assert(mk.status === 201, "creator creates a product link → 201");
+  assert(mk.status === 201, "link create SUCCEEDS once guidelines are acknowledged → 201");
   assert(
     link1.publicUrl.startsWith("http://localhost:3003/") && link1.publicUrl.endsWith(`/${HANDLE}`),
     "LINK TYPE 1: storefront page URL (/{username}/{handle})",
@@ -456,6 +483,130 @@ try {
     !!mineRow && mineRow.publicUrl.endsWith(`/${HANDLE}`) && /\/api\/r\//.test(mineRow.redirectUrl),
     "My Links exposes BOTH link types per product",
   );
+
+  log("\n▶ link kill-switch / takedown");
+  const UNAVAIL = "http://localhost:3003/unavailable";
+  // (1) Per-link takedown.
+  const disable = await fetch(`${BASE}/admin/links/${link1.id}/status`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ status: "disabled", reason: "Disallowed health claim in the Reel" }),
+  });
+  assert(disable.status === 200, "admin disables a link → 200");
+  const downRed = await fetch(`${BASE}/r/${link1.id}`, { redirect: "manual" });
+  assert(
+    downRed.status === 302 && (downRed.headers.get("location") ?? "") === UNAVAIL,
+    "disabled link → neutral 'unavailable' page (NOT the store)",
+  );
+  const enable = await fetch(`${BASE}/admin/links/${link1.id}/status`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ status: "active" }),
+  });
+  assert(enable.status === 200, "admin re-enables the link → 200");
+  const upRed = await fetch(`${BASE}/r/${link1.id}`, { redirect: "manual" });
+  assert(
+    (upRed.headers.get("location") ?? "").includes("demo-shop.myshopify.com"),
+    "re-enabled link → back to the store",
+  );
+
+  // (2) Per-creator suspend ALSO halts ROWLESS storefront redirects.
+  const susp = await fetch(`${BASE}/admin/creators/${demoMe.id}/links-suspend`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ suspended: true, reason: "Compliance review" }),
+  });
+  assert(susp.status === 200, "admin suspends ALL of a creator's links → 200");
+  const rowless = await fetch(`${BASE}/c/${demoMe.refCode}/r/${HANDLE}`, { redirect: "manual" });
+  assert(
+    rowless.status === 302 && (rowless.headers.get("location") ?? "") === UNAVAIL,
+    "rowless storefront redirect ALSO halted for a suspended creator",
+  );
+  await fetch(`${BASE}/admin/creators/${demoMe.id}/links-suspend`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ suspended: false }),
+  });
+
+  // (3) Per-product compliance hold blocks all redirects to it.
+  const hold = await fetch(`${BASE}/admin/products/${idStr}/compliance-hold`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ hold: true, reason: "Product recalled" }),
+  });
+  assert(hold.status === 200, "admin puts a product on compliance hold → 200");
+  const heldRed = await fetch(`${BASE}/c/${demoMe.refCode}/r/${HANDLE}`, { redirect: "manual" });
+  assert(
+    heldRed.status === 302 && (heldRed.headers.get("location") ?? "") === UNAVAIL,
+    "held product blocks creator redirects",
+  );
+  await fetch(`${BASE}/admin/products/${idStr}/compliance-hold`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ hold: false }),
+  });
+
+  log("\n▶ commission clawback (refund after payout)");
+  const commissions = mongoose.connection.collection("commissions");
+  const demoUserId = new mongoose.Types.ObjectId(demoMe.userId);
+  const baseRow = {
+    creatorId: demoUserId,
+    currency: "INR",
+    estimated: false,
+    rateSource: "creator",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await commissions.insertMany([
+    {
+      ...baseRow,
+      orderId: new mongoose.Types.ObjectId(),
+      shopifyOrderId: "claw-approved",
+      rateApplied: 0.1,
+      baseAmount: 1000,
+      amount: 100,
+      status: "approved",
+      clawedBackAmount: 0,
+      clawbackSettled: false,
+    },
+    {
+      ...baseRow,
+      orderId: new mongoose.Types.ObjectId(),
+      shopifyOrderId: "claw-paid",
+      rateApplied: 0.1,
+      baseAmount: 500,
+      amount: 50,
+      status: "paid",
+      paidAt: new Date(),
+      clawedBackAmount: 30,
+      clawbackReason: "Order refunded after payout",
+      clawedBackAt: new Date(),
+      clawbackSettled: false,
+    },
+  ]);
+  const sumBefore = await (
+    await fetch(`${BASE}/creator/commissions`, { headers: demo.headers() })
+  ).json();
+  assert(sumBefore.summary.clawback === 30, "creator summary shows outstanding clawback");
+  assert(sumBefore.summary.approved === 100, "creator summary shows approved owed");
+  const payRows = await (await fetch(`${BASE}/admin/payouts`, { headers: admin.headers() })).json();
+  const payRow = payRows.find((r) => r.creatorId === demoMe.userId);
+  assert(payRow && payRow.clawbackOutstanding === 30, "admin payouts shows outstanding clawback");
+  const pay = await fetch(`${BASE}/admin/payouts/${demoMe.userId}/pay`, {
+    method: "POST",
+    headers: admin.headers(),
+  });
+  const payBody = await pay.json();
+  assert(pay.status === 201, "mark paid → 201");
+  assert(
+    payBody.grossPaid === 100 && payBody.clawbackRecovered === 30 && payBody.netPaid === 70,
+    "payout NETS the clawback (gross 100 − 30 recovered = net 70)",
+  );
+  const sumAfter = await (
+    await fetch(`${BASE}/creator/commissions`, { headers: demo.headers() })
+  ).json();
+  assert(sumAfter.summary.clawback === 0, "clawback settled after payout (no longer outstanding)");
+  assert(sumAfter.summary.approved === 0, "approved balance cleared after payout");
 
   await mongoose.disconnect();
 

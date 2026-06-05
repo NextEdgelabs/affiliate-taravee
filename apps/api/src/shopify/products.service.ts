@@ -5,6 +5,7 @@ import type {
   Product as ProductDto,
   PublicProduct as PublicProductDto,
 } from "@taravee/types";
+import { createHash } from "node:crypto";
 import { Model } from "mongoose";
 
 import {
@@ -52,6 +53,7 @@ export class ProductsService {
           commissionRate: null,
           contentGuidelines: null,
           guidelinesVisibleToCreators: false,
+          complianceHold: false,
         },
       },
       { upsert: true },
@@ -204,6 +206,32 @@ export class ProductsService {
     return doc ? this.toDto(doc) : null;
   }
 
+  /** Per-product compliance hold (kill-switch): blocks all creator redirects to it. */
+  async setComplianceHold(
+    id: string,
+    hold: boolean,
+    reason?: string,
+  ): Promise<ProductDto | null> {
+    const doc = await this.model
+      .findByIdAndUpdate(
+        id,
+        { complianceHold: hold, complianceHoldReason: hold ? reason : undefined },
+        { new: true },
+      )
+      .exec();
+    return doc ? this.toDto(doc) : null;
+  }
+
+  /** True if a product is on compliance hold (checked at redirect time). */
+  async isOnComplianceHold(handle: string): Promise<boolean> {
+    const doc = await this.model
+      .findOne({ handle })
+      .select("complianceHold")
+      .lean()
+      .exec();
+    return Boolean(doc?.complianceHold);
+  }
+
   /** Bulk show/hide content briefs to creators. Skips products deleted in Shopify. */
   async bulkSetGuidelinesVisibility(
     ids: string[],
@@ -267,6 +295,62 @@ export class ProductsService {
         ? this.guidelinesToDto(doc.contentGuidelines)
         : null,
       guidelinesVisibleToCreators: doc.guidelinesVisibleToCreators ?? false,
+      guidelinesHash: ProductsService.complianceHash(doc.contentGuidelines),
+      complianceHold: doc.complianceHold ?? false,
+      complianceHoldReason: doc.complianceHoldReason,
+    };
+  }
+
+  /**
+   * The MANDATORY compliance subset of a brief — what a creator legally must
+   * follow (disclosure + prohibited claims + health disclaimer + required tags).
+   * Returns null when none is set. Used for the always-visible pack + the ack hash.
+   */
+  private static complianceSubset(
+    g?: ContentGuidelines | null,
+  ): Pick<
+    ContentGuidelines,
+    "disclosure" | "prohibitedClaims" | "healthDisclaimer" | "requiredHashtags" | "requiredMentions"
+  > | null {
+    if (!g) return null;
+    const subset = {
+      disclosure: g.disclosure?.trim() || undefined,
+      prohibitedClaims: g.prohibitedClaims?.trim() || undefined,
+      healthDisclaimer: g.healthDisclaimer?.trim() || undefined,
+      requiredHashtags: (g.requiredHashtags ?? []).map((s) => s.trim()).filter(Boolean),
+      requiredMentions: (g.requiredMentions ?? []).map((s) => s.trim()).filter(Boolean),
+    };
+    const hasAny =
+      subset.disclosure ||
+      subset.prohibitedClaims ||
+      subset.healthDisclaimer ||
+      subset.requiredHashtags.length ||
+      subset.requiredMentions.length;
+    return hasAny ? subset : null;
+  }
+
+  /** Stable short hash of the compliance pack ("" when none) — drives the ack gate. */
+  static complianceHash(g?: ContentGuidelines | null): string {
+    const subset = ProductsService.complianceSubset(g);
+    if (!subset) return "";
+    return createHash("sha256").update(JSON.stringify(subset)).digest("hex").slice(0, 16);
+  }
+
+  /** Compliance lookup for the link-acknowledgement gate. null ⇒ no pack (no ack needed). */
+  async findComplianceByHandle(
+    handle: string,
+  ): Promise<{ hash: string; disclosure?: string; prohibitedClaims?: string } | null> {
+    const doc = await this.model
+      .findOne({ handle, deletedInShopify: false })
+      .select("contentGuidelines")
+      .exec();
+    if (!doc) return null;
+    const hash = ProductsService.complianceHash(doc.contentGuidelines);
+    if (!hash) return null;
+    return {
+      hash,
+      disclosure: doc.contentGuidelines?.disclosure,
+      prohibitedClaims: doc.contentGuidelines?.prohibitedClaims,
     };
   }
 
@@ -285,13 +369,27 @@ export class ProductsService {
   }
 
   /**
-   * Creator-facing projection: same as `toDto` but the content brief is hidden
-   * unless the admin made it visible (the flag is always returned so the UI knows
-   * whether a brief exists but is hidden).
+   * Creator-facing projection. The visibility toggle hides only the OPTIONAL
+   * creative guidance (reel/story/post/generalNotes); the MANDATORY compliance
+   * pack (disclosure, prohibited claims, health disclaimer, required tags) is
+   * ALWAYS returned — it's legally required and must never be suppressible.
    */
   private toCreatorDto(doc: ShopifyProductDocument): ProductDto {
     const dto = this.toDto(doc);
-    if (!dto.guidelinesVisibleToCreators) dto.contentGuidelines = null;
+    // Admin-only hold metadata never goes to creators.
+    delete dto.complianceHold;
+    delete dto.complianceHoldReason;
+    if (!dto.guidelinesVisibleToCreators && dto.contentGuidelines) {
+      const g = dto.contentGuidelines;
+      const compliance: ContentGuidelines = {
+        disclosure: g.disclosure,
+        requiredHashtags: g.requiredHashtags,
+        requiredMentions: g.requiredMentions,
+        prohibitedClaims: g.prohibitedClaims,
+        healthDisclaimer: g.healthDisclaimer,
+      };
+      dto.contentGuidelines = ProductsService.complianceHash(compliance) ? compliance : null;
+    }
     return dto;
   }
 

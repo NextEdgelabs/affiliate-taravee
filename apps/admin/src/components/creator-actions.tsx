@@ -79,6 +79,35 @@ export function CreatorActions({ creator }: { creator: AdminCreator }) {
           )
         }
       />
+      {creator.linksSuspended ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() =>
+            call(`/admin/creators/${creator.id}/links-suspend`, { suspended: false }, "PATCH").then(
+              (ok) => ok && toast.success("Links resumed"),
+            )
+          }
+        >
+          Resume links
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={busy}
+          onClick={() =>
+            call(
+              `/admin/creators/${creator.id}/links-suspend`,
+              { suspended: true, reason: "Compliance takedown" },
+              "PATCH",
+            ).then((ok) => ok && toast.success("All links suspended"))
+          }
+        >
+          Suspend links
+        </Button>
+      )}
       {creator.status === "suspended" ? (
         <Button
           size="sm"
