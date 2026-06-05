@@ -316,6 +316,8 @@ export class LinksService {
       title: doc.title,
       publicUrl,
       redirectUrl: `${this.apiBaseUrl()}/api/r/${doc._id.toString()}`,
+      status: doc.status,
+      disabledReason: doc.disabledReason,
       clicks,
       createdAt: (doc as { createdAt?: Date }).createdAt?.toISOString() ?? "",
     };

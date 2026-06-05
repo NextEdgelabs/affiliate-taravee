@@ -14,15 +14,15 @@ export default async function ProductsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
         <p className="text-muted-foreground">
-          Products available to promote. Get your links — a storefront page and a direct-to-store
-          link — and follow each product&apos;s posting guidelines.
+          Products available to promote. Get your links — a storefront page and a direct link to
+          the product — and follow each product&apos;s posting guidelines.
         </p>
       </div>
 
       {products.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No products available yet. Check back once the catalog is published.
+            No products available yet. Check back once products are listed.
           </CardContent>
         </Card>
       ) : (

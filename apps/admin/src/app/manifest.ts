@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Taravee Admin",
     short_name: "Taravee Admin",
-    description: "Taravee affiliate platform — admin dashboard",
+    description: "Taravee creator platform — admin dashboard",
     start_url: "/",
     scope: "/",
     display: "standalone",

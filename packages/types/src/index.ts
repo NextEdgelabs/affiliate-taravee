@@ -294,18 +294,22 @@ export interface CreatorLink {
   productHandle?: string;
   title: string;
   /**
-   * LINK TYPE 1 — the Taravee storefront page (`/{username}/{handle}`). Shows
-   * full product details on the creator's branded page; best for bio/Story/
-   * multi-item content. Attribution fires when the shopper taps Buy there.
+   * LINK TYPE 1 — "Storefront page": the Taravee page (`/{username}/{handle}` for
+   * a product, `/{username}` for a store link). Branded, full details; best for
+   * bio/Story/multi-item content. Attribution fires when the shopper taps Buy.
    */
   publicUrl: string;
   /**
-   * LINK TYPE 2 — direct to the store. API redirect (`/api/r/:id`) that records
-   * the click, stamps UTM, and 302s straight to the Shopify product (fewer clicks
-   * to checkout; best for a single-product Reel/launch). Same attribution as the
-   * storefront link.
+   * LINK TYPE 2 — "Direct link": API redirect (`/api/r/:id`) that records the
+   * click, stamps UTM, and 302s straight to the destination on the Shopify store
+   * — the PRODUCT page for a product link, the store home for a store link.
+   * Fewer clicks; best for a single-product Reel/launch. Same attribution.
    */
   redirectUrl: string;
+  /** active | disabled (admin takedown). Disabled links route to /unavailable. */
+  status?: "active" | "disabled";
+  /** Admin's reason when the link was taken down. */
+  disabledReason?: string;
   clicks: number;
   createdAt: string;
 }

@@ -1,6 +1,7 @@
 import type { AdminCreator } from "@taravee/types";
 import { Badge } from "@taravee/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@taravee/ui/components/card";
+import { titleCase } from "@taravee/ui/lib/format";
 import {
   Table,
   TableBody,
@@ -115,9 +116,17 @@ function CreatorTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[c.verificationStatus] ?? "secondary"}>
-                      {c.verificationStatus}
-                    </Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={STATUS_VARIANT[c.verificationStatus] ?? "secondary"}>
+                        {titleCase(c.verificationStatus)}
+                      </Badge>
+                      {c.status === "suspended" ? (
+                        <Badge variant="destructive">Suspended</Badge>
+                      ) : null}
+                      {c.linksSuspended ? (
+                        <Badge variant="destructive">Links off</Badge>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <CreatorActions creator={c} />

@@ -50,7 +50,9 @@ export class SetListedDto {
 
 // Commission rate is a FRACTION (0..1). null clears the override (use creator
 // default). @ValidateIf skips the numeric checks when the value is explicitly null.
-export class SetCommissionDto {
+// Named distinctly from the creator-level SetCreatorCommissionDto (which is
+// non-nullable) so the two PATCH :id/commission routes can't be confused.
+export class SetProductCommissionDto {
   @ValidateIf((o) => o.commissionRate !== null)
   @IsNumber()
   @Min(0)

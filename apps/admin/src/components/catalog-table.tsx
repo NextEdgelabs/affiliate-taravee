@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
+import { formatRate } from "@taravee/ui/lib/format";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -26,12 +27,6 @@ import { apiFetch } from "@/lib/api";
 
 import { ProductGuidelinesDialog } from "./product-guidelines-dialog";
 import { ProductListedToggle } from "./product-listed-toggle";
-
-function formatRate(rate: number | null | undefined): string {
-  if (rate == null) return "—";
-  const pct = rate * 100;
-  return `${Number.isInteger(pct) ? pct : pct.toFixed(1)}%`;
-}
 
 function hasGuidelines(p: Product): boolean {
   const g = p.contentGuidelines;

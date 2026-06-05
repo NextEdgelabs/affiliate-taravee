@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
+import { titleCase } from "@taravee/ui/lib/format";
 
 import { LinkTakedownButton } from "@/components/link-takedown-button";
 import { serverGet } from "@/lib/server-api";
@@ -64,16 +65,18 @@ export default async function AdminLinksPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={l.type === "store" ? "secondary" : "outline"}>{l.type}</Badge>
+                      <Badge variant={l.type === "store" ? "secondary" : "outline"}>
+                        {titleCase(l.type)}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{l.productHandle ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{l.clicks}</TableCell>
                     <TableCell>
                       {l.status === "active" ? (
-                        <Badge variant="success">active</Badge>
+                        <Badge variant="success">Active</Badge>
                       ) : (
                         <span>
-                          <Badge variant="destructive">disabled</Badge>
+                          <Badge variant="destructive">Disabled</Badge>
                           {l.disabledReason ? (
                             <span className="block text-xs text-muted-foreground">
                               {l.disabledReason}

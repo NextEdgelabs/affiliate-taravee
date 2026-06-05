@@ -81,7 +81,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <div className="m-3 rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3">
         <p className="text-xs font-medium text-[#e7c66a]">Taravee Pro</p>
         <p className="mt-0.5 text-[11px] leading-relaxed text-sidebar-foreground/55">
-          Full affiliate analytics &amp; payouts.
+          Full creator analytics &amp; payouts.
         </p>
       </div>
     </div>

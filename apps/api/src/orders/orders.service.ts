@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { OrderSummary } from "@taravee/types";
+import type { AttributionStatus, OrderSummary } from "@taravee/types";
 import { Model, Types } from "mongoose";
 
 import { CommissionsService } from "../commissions/commissions.service";
@@ -194,7 +194,7 @@ export class OrdersService {
     return { processed: pending.length, attributed };
   }
 
-  async listAdmin(status?: string): Promise<OrderSummary[]> {
+  async listAdmin(status?: AttributionStatus): Promise<OrderSummary[]> {
     const filter = status ? { attributionStatus: status } : {};
     const docs = await this.model.find(filter).sort({ shopifyCreatedAt: -1 }).limit(500).exec();
     return docs.map((d) => this.toDto(d));

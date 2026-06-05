@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@taravee/ui/components/card";
+import { formatRate } from "@taravee/ui/lib/format";
 import { MousePointerClick, ShoppingBag, Wallet } from "lucide-react";
 
 import { serverGet } from "@/lib/server-api";
@@ -41,7 +42,7 @@ export default async function CreatorDashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
           Your performance
-          {profile ? ` · ${Math.round(profile.commissionRate * 100)}% commission` : ""}.
+          {profile ? ` · ${formatRate(profile.commissionRate)} commission` : ""}.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

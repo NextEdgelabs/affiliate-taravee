@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
+import { formatMoney, formatRate, titleCase } from "@taravee/ui/lib/format";
 
 import { CommissionStatusActions } from "@/components/commission-status-actions";
 import { serverGet } from "@/lib/server-api";
@@ -59,21 +60,13 @@ export default async function CommissionsPage() {
                 commissions.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs">{c.shopifyOrderId.slice(-10)}</TableCell>
+                    <TableCell>{formatMoney(c.baseAmount, c.currency)}</TableCell>
+                    <TableCell>{formatRate(c.rateApplied)}</TableCell>
+                    <TableCell className="font-medium">{formatMoney(c.amount, c.currency)}</TableCell>
                     <TableCell>
-                      {new Intl.NumberFormat("en-IN", {
-                        style: "currency",
-                        currency: c.currency,
-                      }).format(c.baseAmount)}
-                    </TableCell>
-                    <TableCell>{Math.round(c.rateApplied * 100)}%</TableCell>
-                    <TableCell className="font-medium">
-                      {new Intl.NumberFormat("en-IN", {
-                        style: "currency",
-                        currency: c.currency,
-                      }).format(c.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>{c.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>
+                        {titleCase(c.status)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <CommissionStatusActions id={c.id} status={c.status} />

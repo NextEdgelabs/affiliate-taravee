@@ -51,7 +51,7 @@ export function LoginForm() {
       <CardHeader className="items-center text-center">
         <BrandLogo orientation="vertical" showTagline className="mb-2" />
         <CardTitle className="text-lg">Admin sign in</CardTitle>
-        <CardDescription>Manage the Taravee affiliate program</CardDescription>
+        <CardDescription>Manage the Taravee creator program</CardDescription>
       </CardHeader>
       <CardContent>
         <form

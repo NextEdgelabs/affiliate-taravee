@@ -52,7 +52,7 @@ export class RejectCreatorDto {
   reason: string;
 }
 
-export class SetCommissionDto {
+export class SetCreatorCommissionDto {
   @IsNumber()
   @Min(0)
   @Max(1)

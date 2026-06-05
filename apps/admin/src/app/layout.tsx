@@ -9,7 +9,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   applicationName: "Taravee Admin",
   title: { default: "Taravee Admin", template: "%s · Taravee Admin" },
-  description: "Taravee affiliate platform — admin dashboard",
+  description: "Taravee creator platform — admin dashboard",
   icons: {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",

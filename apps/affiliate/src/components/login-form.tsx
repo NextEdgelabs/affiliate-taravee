@@ -52,7 +52,7 @@ export function LoginForm() {
       <CardHeader className="items-center text-center">
         <BrandLogo orientation="vertical" showTagline className="mb-2" />
         <CardTitle className="text-lg">Welcome back</CardTitle>
-        <CardDescription>Sign in to your affiliate account</CardDescription>
+        <CardDescription>Sign in to your creator account</CardDescription>
       </CardHeader>
       <CardContent>
         <form
