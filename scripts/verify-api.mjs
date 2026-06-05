@@ -106,9 +106,10 @@ try {
   assert(col.status === "draft" && col.theme === "rose", "collection starts as draft with chosen theme");
   const mine = await (await fetch(`${BASE}/creator/collections`, { headers: demo.headers() })).json();
   assert(Array.isArray(mine) && mine.some((c) => c.id === col.id), "collection appears in my list");
-  const pubEmpty = await fetch(`${BASE}/creator/collections/${col.id}/publish`, {
-    method: "POST",
+  const pubEmpty = await fetch(`${BASE}/creator/collections/${col.id}/status`, {
+    method: "PATCH",
     headers: demo.headers(),
+    body: JSON.stringify({ status: "published" }),
   });
   assert(pubEmpty.status === 400, "publishing an empty collection is rejected");
   await fetch(`${BASE}/creator/collections/${col.id}`, {
@@ -116,12 +117,13 @@ try {
     headers: demo.headers(),
     body: JSON.stringify({ productHandles: ["demo-handle"] }),
   });
-  const pub = await fetch(`${BASE}/creator/collections/${col.id}/publish`, {
-    method: "POST",
+  const pub = await fetch(`${BASE}/creator/collections/${col.id}/status`, {
+    method: "PATCH",
     headers: demo.headers(),
+    body: JSON.stringify({ status: "published" }),
   });
   const pubBody = await pub.json();
-  assert(pub.status === 201 && pubBody.status === "published", "collection publishes once it has products");
+  assert(pub.status === 200 && pubBody.status === "published", "collection publishes once it has products (PATCH :id/status)");
   const sf = await fetch(`${BASE}/storefront/creators/${demoMe.slug}/collections/${pubBody.slug}`);
   assert(sf.status === 200, "published collection resolves on the public storefront");
   const draftCol = await (await fetch(`${BASE}/creator/collections`, { headers: demo.headers() })).json();
@@ -545,6 +547,16 @@ try {
     headers: admin.headers(),
     body: JSON.stringify({ hold: false }),
   });
+
+  log("\n▶ bulk route grammar (<noun>/bulk must not collide with :id/<noun>)");
+  const bulkVis = await fetch(`${BASE}/admin/products/guidelines-visibility/bulk`, {
+    method: "PATCH",
+    headers: admin.headers(),
+    body: JSON.stringify({ ids: [idStr], visible: true }),
+  });
+  const bulkBody = await bulkVis.json();
+  assert(bulkVis.status === 200, "PATCH guidelines-visibility/bulk → 200 (resolves, no :id collision)");
+  assert(bulkBody.matched === 1, "bulk route matched the target product");
 
   log("\n▶ commission clawback (refund after payout)");
   const commissions = mongoose.connection.collection("commissions");

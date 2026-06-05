@@ -8,13 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
+import { formatMoney as money } from "@taravee/ui/lib/format";
 
 import { MarkPaidButton } from "@/components/mark-paid-button";
 import { serverGet } from "@/lib/server-api";
-
-function money(n: number, currency: string) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(n);
-}
 
 export default async function AdminPayoutsPage() {
   const rows = (await serverGet<AdminPayoutRow[]>("/admin/payouts")) ?? [];
