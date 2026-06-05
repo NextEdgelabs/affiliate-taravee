@@ -18,6 +18,7 @@
     "verify:api": "pnpm --filter @taravee/api build && node scripts/verify-api.mjs",
     "verify:shopify": "pnpm --filter @taravee/api build && node scripts/verify-shop-domain.mjs && node scripts/verify-shopify-cc.mjs",
     "verify:refunds": "pnpm --filter @taravee/api build && node scripts/verify-refunds.mjs",
+    "verify:cookie": "pnpm --filter @taravee/api build && node scripts/verify-cookie-domain.mjs",
     "verify:frontend": "pnpm build && node scripts/verify-frontend.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },

@@ -7,6 +7,7 @@ import session from "express-session";
 import passport from "passport";
 
 import { AppModule } from "./app.module";
+import { deriveCookieDomain } from "./common/utils/cookie-domain.util";
 
 async function bootstrap() {
   // rawBody:true keeps the original bytes available (req.rawBody) for Shopify
@@ -60,7 +61,27 @@ async function bootstrap() {
   // the cookie is host-only to the API domain and the dashboards' SSR session
   // check (getSession on admin.*) never sees it → login bounces back to /login.
   // (Locally this isn't needed: localhost:4000 and :3001 share the localhost jar.)
-  const cookieDomain = config.get<string>("SESSION_COOKIE_DOMAIN") || undefined;
+  //
+  // In prod, if SESSION_COOKIE_DOMAIN isn't set explicitly, DERIVE it from the
+  // shared parent of the API host + the credentialed frontends so the deployment
+  // works without one more env var to remember (the #1 prod login footgun).
+  let cookieDomain = config.get<string>("SESSION_COOKIE_DOMAIN") || undefined;
+  if (isProd && !cookieDomain) {
+    const derived = deriveCookieDomain([
+      config.get<string>("PUBLIC_API_URL"),
+      ...origins,
+    ]);
+    if (derived) {
+      cookieDomain = derived;
+      console.log(
+        `[session] SESSION_COOKIE_DOMAIN not set — derived "${derived}" from PUBLIC_API_URL + CORS_ORIGINS so the cookie is visible to the dashboard subdomains.`,
+      );
+    } else {
+      console.warn(
+        "[session] SESSION_COOKIE_DOMAIN not set and no shared parent domain could be derived — the session cookie will be HOST-ONLY, so cross-subdomain SSR login will fail. Set SESSION_COOKIE_DOMAIN explicitly (e.g. .yourbrand.com).",
+      );
+    }
+  }
   const mkSession = (name: string) =>
     session({
       name,
