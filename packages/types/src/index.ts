@@ -284,15 +284,30 @@ export interface PublicProduct {
 
 // ─── Links / clicks ──────────────────────────────────────────────────────────
 
-export type LinkType = "product" | "store"; // "collection" is Phase 2
+export type LinkType = "product" | "store" | "collection";
 
 export interface CreatorLink {
   id: string;
   creatorId: string;
   type: LinkType;
-  /** Product handle for product links; undefined for store links. */
+  /** Product handle for product links; undefined for store/collection links. */
   productHandle?: string;
+  /** Creator-collection slug for collection links; undefined otherwise. */
+  collectionSlug?: string;
   title: string;
+  /**
+   * Campaign tag. A creator can mint MULTIPLE links for the same product/store/
+   * collection, each with a distinct campaign, so identical promotions across
+   * months/channels stay separable. Absent for the single default link.
+   */
+  campaignLabel?: string;
+  /** Normalized (slugified) campaign label — the per-campaign identity key. */
+  campaignKey?: string;
+  /** Optional channel overrides for utm_source / utm_medium (e.g. instagram/reel). */
+  utmSourceOverride?: string;
+  utmMediumOverride?: string;
+  /** Free-form creator notes (e.g. "July launch — paid story"). */
+  notes?: string;
   /**
    * LINK TYPE 1 — "Storefront page": the Taravee page (`/{username}/{handle}` for
    * a product, `/{username}` for a store link). Branded, full details; best for
@@ -321,11 +336,37 @@ export interface AdminLink {
   creatorRefCode: string;
   type: LinkType;
   productHandle?: string;
+  collectionSlug?: string;
   title: string;
+  campaignLabel?: string;
+  campaignKey?: string;
   status: "active" | "disabled";
   disabledReason?: string;
   clicks: number;
   createdAt: string;
+}
+
+/**
+ * Per-campaign rollup for the creator dashboard. Clicks are EXACT (stamped at our
+ * own redirect); orders/revenue are best-effort (depend on Shopify retaining the
+ * utm_content = linkId through checkout).
+ */
+export interface CampaignAnalytics {
+  linkId: string;
+  type: LinkType;
+  productHandle?: string;
+  collectionSlug?: string;
+  title: string;
+  /** undefined for the default (unnamed) link. */
+  campaignLabel?: string;
+  campaignKey?: string;
+  /** Effective utm_source / utm_medium for this link. */
+  utmSource: string;
+  utmMedium: string;
+  clicks: number;
+  orders: number;
+  revenue: number;
+  currency: string;
 }
 
 // ─── Creator collections (Phase 2) ───────────────────────────────────────────
