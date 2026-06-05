@@ -48,20 +48,22 @@ export class AdminProductsController {
     });
   }
 
-  // Bulk routes use single-segment paths so they never collide with `:id/*`.
-  @Patch("bulk-listed")
+  // Bulk routes are `<noun>/bulk` so the noun matches the single-item route
+  // (`:id/<noun>`). They're declared BEFORE the `:id/*` routes; the trailing
+  // `bulk` segment differs from the single-item second segment, so no collision.
+  @Patch("listed/bulk")
   bulkListed(@Body() dto: BulkListedDto): Promise<{ matched: number; modified: number }> {
     return this.products.bulkSetListed(dto.ids, dto.listed);
   }
 
-  @Patch("bulk-commission")
+  @Patch("commission/bulk")
   bulkCommission(
     @Body() dto: BulkCommissionDto,
   ): Promise<{ matched: number; modified: number }> {
     return this.products.bulkSetCommission(dto.ids, dto.commissionRate);
   }
 
-  @Patch("bulk-guidelines-visibility")
+  @Patch("guidelines-visibility/bulk")
   bulkGuidelinesVisibility(
     @Body() dto: BulkGuidelinesVisibilityDto,
   ): Promise<{ matched: number; modified: number }> {

@@ -83,18 +83,19 @@ export function CollectionBuilder({
       toast.error("Save the collection first");
       return;
     }
-    const action = initial.status === "published" ? "unpublish" : "publish";
+    const nextStatus = initial.status === "published" ? "draft" : "published";
     setBusy(true);
     try {
-      const res = await apiFetch(`/creator/collections/${initial.id}/${action}`, {
-        method: "POST",
+      const res = await apiFetch(`/creator/collections/${initial.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { message?: string } | null;
         toast.error(data?.message ?? "Could not update");
         return;
       }
-      toast.success(action === "publish" ? "Published" : "Unpublished");
+      toast.success(nextStatus === "published" ? "Published" : "Unpublished");
       router.refresh();
     } finally {
       setBusy(false);

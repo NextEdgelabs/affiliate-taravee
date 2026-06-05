@@ -15,14 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
-import { formatRate, titleCase } from "@taravee/ui/lib/format";
+import { formatMoney as money, formatRate, titleCase } from "@taravee/ui/lib/format";
 
 import { PayoutSettings } from "@/components/payout-settings";
 import { serverGet } from "@/lib/server-api";
-
-function money(n: number, currency: string) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(n);
-}
 
 const STATUS_VARIANT: Record<string, "warning" | "success" | "secondary" | "destructive"> = {
   pending: "warning",

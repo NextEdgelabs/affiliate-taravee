@@ -6,14 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@taravee/ui/components/card";
-import { formatRate } from "@taravee/ui/lib/format";
+import { formatMoney as money, formatRate } from "@taravee/ui/lib/format";
 import { MousePointerClick, ShoppingBag, Wallet } from "lucide-react";
 
 import { serverGet } from "@/lib/server-api";
-
-function money(n: number, currency: string) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(n);
-}
 
 export default async function CreatorDashboardPage() {
   const [stats, profile] = await Promise.all([

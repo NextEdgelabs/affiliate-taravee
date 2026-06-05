@@ -1,5 +1,6 @@
 import type { AdminStats } from "@taravee/types";
 import { Card } from "@taravee/ui/components/card";
+import { formatMoney as money } from "@taravee/ui/lib/format";
 import { cn } from "@taravee/ui/lib/utils";
 import {
   Package,
@@ -11,10 +12,6 @@ import {
 } from "lucide-react";
 
 import { serverGet } from "@/lib/server-api";
-
-function money(n: number, currency: string) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(n);
-}
 
 export default async function AdminDashboardPage() {
   const stats = await serverGet<AdminStats>("/admin/stats");

@@ -94,7 +94,7 @@ export function CatalogTable({ items }: { items: Product[] }) {
   function bulkListed(listed: boolean) {
     return mutate(
       () =>
-        apiFetch("/admin/products/bulk-listed", {
+        apiFetch("/admin/products/listed/bulk", {
           method: "PATCH",
           body: JSON.stringify({ ids: ids(), listed }),
         }),
@@ -106,7 +106,7 @@ export function CatalogTable({ items }: { items: Product[] }) {
   function bulkGuidelinesVisibility(visible: boolean) {
     return mutate(
       () =>
-        apiFetch("/admin/products/bulk-guidelines-visibility", {
+        apiFetch("/admin/products/guidelines-visibility/bulk", {
           method: "PATCH",
           body: JSON.stringify({ ids: ids(), visible }),
         }),
@@ -136,7 +136,7 @@ export function CatalogTable({ items }: { items: Product[] }) {
               method: "PATCH",
               body: JSON.stringify({ commissionRate: value }),
             })
-          : apiFetch("/admin/products/bulk-commission", {
+          : apiFetch("/admin/products/commission/bulk", {
               method: "PATCH",
               body: JSON.stringify({ ids: targets, commissionRate: value }),
             }),

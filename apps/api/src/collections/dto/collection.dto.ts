@@ -10,6 +10,13 @@ import {
 
 const THEMES = ["gold", "midnight", "rose", "emerald"] as const;
 
+// Mirrors SetLinkStatusDto / SetCreatorStatusDto so a status change is one
+// PATCH :id/status everywhere, not a per-verb POST route.
+export class SetCollectionStatusDto {
+  @IsIn(["draft", "published"])
+  status: "draft" | "published";
+}
+
 export class CreateCollectionDto {
   @IsString()
   @MinLength(1)

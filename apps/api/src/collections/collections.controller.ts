@@ -20,7 +20,11 @@ import { AuthenticatedGuard } from "../common/guards/authenticated.guard";
 import { CreatorActiveGuard } from "../common/guards/creator-active.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CollectionsService } from "./collections.service";
-import { CreateCollectionDto, UpdateCollectionDto } from "./dto/collection.dto";
+import {
+  CreateCollectionDto,
+  SetCollectionStatusDto,
+  UpdateCollectionDto,
+} from "./dto/collection.dto";
 
 @Controller("creator/collections")
 @UseGuards(AuthenticatedGuard, RolesGuard, CreatorActiveGuard)
@@ -50,20 +54,13 @@ export class CreatorCollectionsController {
     return this.collections.update(user.id, id, dto);
   }
 
-  @Post(":id/publish")
-  publish(
+  @Patch(":id/status")
+  setStatus(
     @CurrentUser() user: SessionUser,
     @Param("id") id: string,
+    @Body() dto: SetCollectionStatusDto,
   ): Promise<CreatorCollectionDto> {
-    return this.collections.setStatus(user.id, id, "published");
-  }
-
-  @Post(":id/unpublish")
-  unpublish(
-    @CurrentUser() user: SessionUser,
-    @Param("id") id: string,
-  ): Promise<CreatorCollectionDto> {
-    return this.collections.setStatus(user.id, id, "draft");
+    return this.collections.setStatus(user.id, id, dto.status);
   }
 
   @Delete(":id")
