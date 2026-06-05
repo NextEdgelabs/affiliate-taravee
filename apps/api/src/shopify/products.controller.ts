@@ -18,7 +18,7 @@ import {
   BulkCommissionDto,
   BulkGuidelinesVisibilityDto,
   BulkListedDto,
-  SetCommissionDto,
+  SetProductCommissionDto,
   SetComplianceHoldDto,
   SetGuidelinesDto,
   SetGuidelinesVisibilityDto,
@@ -81,7 +81,7 @@ export class AdminProductsController {
   @Patch(":id/commission")
   async setCommission(
     @Param("id") id: string,
-    @Body() dto: SetCommissionDto,
+    @Body() dto: SetProductCommissionDto,
   ): Promise<ProductDto> {
     const product = await this.products.setCommission(id, dto.commissionRate);
     if (!product) throw new NotFoundException("Product not found");

@@ -44,7 +44,7 @@ export function ProductCard({
         <p className="text-sm text-muted-foreground">{price}</p>
         <Button asChild size="sm" className="mt-1">
           <a href={redirectUrl(refCode, product.handle)} rel="nofollow">
-            Shop now
+            Buy now
           </a>
         </Button>
       </div>

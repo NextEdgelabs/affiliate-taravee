@@ -26,7 +26,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex flex-col leading-none">
           <Wordmark className="text-lg" />
           <span className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            Affiliate
+            Creator
           </span>
         </div>
       </div>

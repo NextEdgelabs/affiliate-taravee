@@ -2,11 +2,11 @@ import type { AdminStats } from "@taravee/types";
 import { Card } from "@taravee/ui/components/card";
 import { cn } from "@taravee/ui/lib/utils";
 import {
-  DollarSign,
   Package,
   ShoppingCart,
   TrendingUp,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
       label: "Commission owed",
       value: money(stats?.commissionOwed ?? 0, currency),
       sub: "estimated, pre-refund",
-      icon: DollarSign,
+      icon: Wallet,
       tint: "from-violet-500/15 to-fuchsia-500/15 text-violet-600",
     },
   ];
@@ -57,7 +57,7 @@ export default async function AdminDashboardPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back 👋</h1>
-        <p className="text-muted-foreground">Overview of your affiliate program.</p>
+        <p className="text-muted-foreground">Overview of your creator program.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

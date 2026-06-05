@@ -93,7 +93,7 @@ export default async function ProductPage({
 
           <Button asChild size="lg" className="mt-2 w-full sm:w-auto">
             <a href={redirectUrl(creator.refCode, product.handle)} rel="nofollow">
-              Buy on store
+              Buy now
             </a>
           </Button>
         </div>

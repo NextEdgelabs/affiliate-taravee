@@ -2,6 +2,7 @@
 
 import { Button } from "@taravee/ui/components/button";
 import { toast } from "@taravee/ui/components/sonner";
+import { formatMoney } from "@taravee/ui/lib/format";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -37,7 +38,7 @@ export function MarkPaidButton({
           };
           toast.success(
             r.clawbackRecovered > 0
-              ? `Marked ${r.paid} paid · net ${r.netPaid} after ${r.clawbackRecovered} clawback`
+              ? `Marked ${r.paid} paid · net ${formatMoney(r.netPaid)} after ${formatMoney(r.clawbackRecovered)} clawback`
               : `Marked ${r.paid} commission(s) paid`,
           );
           router.refresh();

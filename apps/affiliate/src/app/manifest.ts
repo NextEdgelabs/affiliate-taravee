@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Taravee Affiliate",
+    name: "Taravee Creator",
     short_name: "Taravee",
-    description: "Taravee affiliate platform — affiliate dashboard",
+    description: "Taravee creator platform — creator dashboard",
     start_url: "/",
     scope: "/",
     display: "standalone",

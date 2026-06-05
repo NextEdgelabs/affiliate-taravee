@@ -2,6 +2,7 @@ import type { CreatorCollection } from "@taravee/types";
 import { Badge } from "@taravee/ui/components/badge";
 import { Button } from "@taravee/ui/components/button";
 import { Card, CardContent } from "@taravee/ui/components/card";
+import { titleCase } from "@taravee/ui/lib/format";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -41,7 +42,7 @@ export default async function CollectionsPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{c.title}</span>
                   <Badge variant={c.status === "published" ? "success" : "secondary"}>
-                    {c.status}
+                    {titleCase(c.status)}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">

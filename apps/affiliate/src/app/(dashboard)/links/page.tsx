@@ -1,6 +1,7 @@
 import type { CreatorLink } from "@taravee/types";
 import { Badge } from "@taravee/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@taravee/ui/components/card";
+import { titleCase } from "@taravee/ui/lib/format";
 import {
   Table,
   TableBody,
@@ -24,8 +25,8 @@ export default async function LinksPage() {
           <h1 className="text-2xl font-semibold tracking-tight">My Links</h1>
           <p className="text-muted-foreground">
             Each link comes in two flavours — a <strong>storefront page</strong> (full details,
-            great for your bio/Stories) and a <strong>direct-to-store</strong> link (straight to
-            checkout). Both track to you.
+            great for your bio/Stories) and a <strong>direct link</strong> (jumps straight to the
+            product on the store). Both track to you.
           </p>
         </div>
         <CreateLinkButton type="store" title="My store" label="Create store link" variant="outline" />
@@ -42,13 +43,14 @@ export default async function LinksPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Links</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {links.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                     No links yet — create one from the Products page or add a store link.
                   </TableCell>
                 </TableRow>
@@ -57,7 +59,7 @@ export default async function LinksPage() {
                   <TableRow key={l.id}>
                     <TableCell>
                       <Badge variant={l.type === "store" ? "secondary" : "outline"}>
-                        {l.type}
+                        {titleCase(l.type)}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">{l.title}</TableCell>
@@ -82,6 +84,18 @@ export default async function LinksPage() {
                           <CopyButton value={l.redirectUrl} label="Copy" />
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {l.status === "disabled" ? (
+                        <span>
+                          <Badge variant="destructive">Disabled</Badge>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {l.disabledReason ?? "Turned off by the team"}
+                          </span>
+                        </span>
+                      ) : (
+                        <Badge variant="success">Active</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{l.clicks}</TableCell>
                   </TableRow>

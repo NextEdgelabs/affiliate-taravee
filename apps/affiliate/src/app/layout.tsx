@@ -7,9 +7,9 @@ import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  applicationName: "Taravee Affiliate",
-  title: { default: "Taravee Affiliate", template: "%s · Taravee" },
-  description: "Taravee affiliate platform — affiliate dashboard",
+  applicationName: "Taravee Creator",
+  title: { default: "Taravee Creator", template: "%s · Taravee Creator" },
+  description: "Taravee creator platform — creator dashboard",
   icons: {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Taravee Affiliate",
+    title: "Taravee Creator",
   },
 };
 

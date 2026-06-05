@@ -99,8 +99,8 @@ export function ProductLinksDialog({ product }: { product: Product }) {
                   value={link.publicUrl}
                 />
                 <LinkRow
-                  label="Direct to store"
-                  hint="Sends shoppers straight to checkout — fewest clicks, best for a single-product Reel or a launch."
+                  label="Direct to product"
+                  hint="Sends shoppers straight to this product on the store — fewest clicks, best for a single-product Reel or a launch."
                   value={link.redirectUrl}
                 />
               </>

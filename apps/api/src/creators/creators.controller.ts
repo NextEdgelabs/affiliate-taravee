@@ -27,7 +27,7 @@ import {
   AdminCreateCreatorDto,
   ApproveCreatorDto,
   RejectCreatorDto,
-  SetCommissionDto,
+  SetCreatorCommissionDto,
   SetCreatorStatusDto,
   SetPayoutDto,
   SuspendLinksDto,
@@ -113,7 +113,7 @@ export class AdminCreatorsController {
   @Patch(":id/commission")
   async setCommission(
     @Param("id") id: string,
-    @Body() dto: SetCommissionDto,
+    @Body() dto: SetCreatorCommissionDto,
   ): Promise<CreatorProfileDto> {
     const profile = await this.creators.setCommission(id, dto.commissionRate);
     return this.creators.toProfile(profile);

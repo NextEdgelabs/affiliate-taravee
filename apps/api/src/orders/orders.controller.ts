@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import type {
   AdminStats,
+  AttributionStatus,
   CreatorStats,
   OrderSummary,
   SessionUser,
@@ -36,7 +37,7 @@ export class AdminOrdersController {
   ) {}
 
   @Get("orders")
-  list(@Query("status") status?: string): Promise<OrderSummary[]> {
+  list(@Query("status") status?: AttributionStatus): Promise<OrderSummary[]> {
     return this.orders.listAdmin(status);
   }
 

@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taravee/ui/components/table";
+import { formatRate, titleCase } from "@taravee/ui/lib/format";
 
 import { PayoutSettings } from "@/components/payout-settings";
 import { serverGet } from "@/lib/server-api";
@@ -110,17 +111,19 @@ export default async function PayoutsPage() {
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs">{c.shopifyOrderId.slice(-10)}</TableCell>
                     <TableCell>{money(c.baseAmount, c.currency)}</TableCell>
-                    <TableCell>{Math.round(c.rateApplied * 100)}%</TableCell>
+                    <TableCell>{formatRate(c.rateApplied)}</TableCell>
                     <TableCell className="font-medium">
                       {money(c.amount, c.currency)}
                       {c.clawedBackAmount && c.clawedBackAmount > 0 ? (
                         <span className="block text-xs text-destructive">
-                          −{money(c.clawedBackAmount, c.currency)} clawed back
+                          −{money(c.clawedBackAmount, c.currency)} refunded
                         </span>
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>{c.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>
+                        {titleCase(c.status)}
+                      </Badge>
                       {c.status === "reversed" && c.reversalReason ? (
                         <span className="block text-xs text-muted-foreground">{c.reversalReason}</span>
                       ) : null}
