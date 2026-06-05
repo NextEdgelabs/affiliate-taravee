@@ -132,6 +132,16 @@ export class SetGuidelinesVisibilityDto {
   visible: boolean;
 }
 
+export class SetComplianceHoldDto {
+  @IsBoolean()
+  hold: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  reason?: string;
+}
+
 export class BulkGuidelinesVisibilityDto {
   @IsArray()
   @ArrayNotEmpty()

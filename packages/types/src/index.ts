@@ -96,6 +96,8 @@ export interface AdminPayoutRow {
   approvedAmount: number; // owed now (approved, not yet paid)
   pendingAmount: number; // accrued but not yet approved
   paidAmount: number;
+  /** Outstanding clawback owed back (refunds on already-paid commissions). */
+  clawbackOutstanding: number;
   currency: string;
 }
 
@@ -105,6 +107,9 @@ export interface AdminCreator extends CreatorProfile {
   name: string;
   status: UserStatus;
   rejectionReason?: string;
+  /** Compliance kill-switch: all of this creator's links are halted. */
+  linksSuspended?: boolean;
+  linksSuspendedReason?: string;
 }
 
 /** Public creator info safe to expose on the storefront (no commission rate). */
@@ -241,8 +246,19 @@ export interface Product {
    * surface always returns it so it can be edited).
    */
   contentGuidelines?: ContentGuidelines | null;
-  /** Whether creators can see the content brief (admin-controlled). */
+  /** Whether creators can see the OPTIONAL creative guidance (Reel/Story/Post).
+   * The compliance pack (disclosure, prohibited claims, health disclaimer,
+   * required tags) is always shown to creators regardless of this flag. */
   guidelinesVisibleToCreators?: boolean;
+  /**
+   * Stable hash of the mandatory compliance pack. Empty ⇒ no compliance pack
+   * (no acknowledgement needed). Non-empty ⇒ the creator must acknowledge the
+   * guidelines (echo this hash back) before a link can be minted.
+   */
+  guidelinesHash?: string;
+  /** Admin kill-switch: when true, all creator redirects to this product stop. */
+  complianceHold?: boolean;
+  complianceHoldReason?: string;
 }
 
 /** Public projection — safe for the unauthenticated storefront (no internal IDs/SKU/inventory). */
@@ -290,6 +306,20 @@ export interface CreatorLink {
    * storefront link.
    */
   redirectUrl: string;
+  clicks: number;
+  createdAt: string;
+}
+
+/** Admin view of a creator link, for the takedown console. */
+export interface AdminLink {
+  id: string;
+  creatorSlug: string;
+  creatorRefCode: string;
+  type: LinkType;
+  productHandle?: string;
+  title: string;
+  status: "active" | "disabled";
+  disabledReason?: string;
   clicks: number;
   createdAt: string;
 }
@@ -395,6 +425,17 @@ export interface Commission {
   estimated: boolean;
   /** Whether rateApplied came from a product override or the creator default. */
   rateSource?: "creator" | "product";
+  /** Why a `reversed` row was reversed (refund/cancel vs re-attributed). */
+  reversalReason?: string;
+  /**
+   * Money already PAID that a later refund/cancel/re-attribution must recover.
+   * 0 ⇒ none. Netted against the creator's next payout until settled.
+   */
+  clawedBackAmount?: number;
+  /** Why this paid commission is being clawed back. */
+  clawbackReason?: string;
+  /** True once the clawback has been netted against a payout. */
+  clawbackSettled?: boolean;
   createdAt: string;
 }
 
@@ -402,6 +443,8 @@ export interface CommissionSummary {
   pending: number;
   approved: number;
   paid: number;
+  /** Outstanding clawback owed back on already-paid commissions (refunds). */
+  clawback: number;
   currency: string;
 }
 

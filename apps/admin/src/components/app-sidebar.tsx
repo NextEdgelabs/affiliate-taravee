@@ -4,6 +4,7 @@ import { BrandMark, Wordmark } from "@taravee/ui/components/brand-logo";
 import { cn } from "@taravee/ui/lib/utils";
 import {
   LayoutDashboard,
+  Link2,
   Package,
   Receipt,
   ShoppingCart,
@@ -18,6 +19,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/creators", label: "Creators", icon: Users },
   { href: "/catalog", label: "Products", icon: Package },
+  { href: "/links", label: "Links", icon: Link2 },
   { href: "/orders", label: "Orders", icon: ShoppingCart },
   { href: "/commissions", label: "Commissions", icon: Receipt },
   { href: "/payouts", label: "Payouts", icon: Wallet },

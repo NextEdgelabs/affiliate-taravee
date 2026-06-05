@@ -27,6 +27,7 @@ export class PayoutsController {
         pending: 0,
         approved: 0,
         paid: 0,
+        clawback: 0,
         currency: "INR",
       };
       return {
@@ -38,6 +39,7 @@ export class PayoutsController {
         approvedAmount: a.approved,
         pendingAmount: a.pending,
         paidAmount: a.paid,
+        clawbackOutstanding: a.clawback,
         currency: a.currency,
       };
     });
@@ -45,7 +47,12 @@ export class PayoutsController {
 
   /** Mark a creator's approved commissions as paid (records a manual transfer). */
   @Post(":creatorId/pay")
-  pay(@Param("creatorId") creatorId: string): Promise<{ paid: number }> {
+  pay(@Param("creatorId") creatorId: string): Promise<{
+    paid: number;
+    grossPaid: number;
+    clawbackRecovered: number;
+    netPaid: number;
+  }> {
     return this.commissions.payApprovedForCreator(creatorId);
   }
 }

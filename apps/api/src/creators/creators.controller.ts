@@ -30,6 +30,7 @@ import {
   SetCommissionDto,
   SetCreatorStatusDto,
   SetPayoutDto,
+  SuspendLinksDto,
 } from "./dto/creator-admin.dto";
 
 @Controller("creators")
@@ -125,5 +126,15 @@ export class AdminCreatorsController {
   ): Promise<{ success: boolean }> {
     await this.creators.setStatus(id, dto.status);
     return { success: true };
+  }
+
+  /** Compliance kill-switch: halt or resume all of a creator's live links. */
+  @Patch(":id/links-suspend")
+  async suspendLinks(
+    @Param("id") id: string,
+    @Body() dto: SuspendLinksDto,
+  ): Promise<CreatorProfileDto> {
+    const profile = await this.creators.setLinksSuspended(id, dto.suspended, dto.reason);
+    return this.creators.toProfile(profile);
   }
 }

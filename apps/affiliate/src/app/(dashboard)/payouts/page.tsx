@@ -35,7 +35,13 @@ export default async function PayoutsPage() {
     "/creator/commissions",
   );
   const items = data?.items ?? [];
-  const summary = data?.summary ?? { pending: 0, approved: 0, paid: 0, currency: "INR" };
+  const summary = data?.summary ?? {
+    pending: 0,
+    approved: 0,
+    paid: 0,
+    clawback: 0,
+    currency: "INR",
+  };
   const cur = summary.currency;
 
   return (
@@ -61,6 +67,19 @@ export default async function PayoutsPage() {
           </Card>
         ))}
       </div>
+
+      {summary.clawback > 0 && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-destructive">Adjustments (refunds)</CardDescription>
+            <CardTitle className="text-xl text-destructive">−{money(summary.clawback, cur)}</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Some orders you were paid for were later refunded or cancelled. This amount is
+              netted off your next payout.
+            </p>
+          </CardHeader>
+        </Card>
+      )}
 
       <PayoutSettings />
 
@@ -92,9 +111,19 @@ export default async function PayoutsPage() {
                     <TableCell className="font-mono text-xs">{c.shopifyOrderId.slice(-10)}</TableCell>
                     <TableCell>{money(c.baseAmount, c.currency)}</TableCell>
                     <TableCell>{Math.round(c.rateApplied * 100)}%</TableCell>
-                    <TableCell className="font-medium">{money(c.amount, c.currency)}</TableCell>
+                    <TableCell className="font-medium">
+                      {money(c.amount, c.currency)}
+                      {c.clawedBackAmount && c.clawedBackAmount > 0 ? (
+                        <span className="block text-xs text-destructive">
+                          −{money(c.clawedBackAmount, c.currency)} clawed back
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>{c.status}</Badge>
+                      {c.status === "reversed" && c.reversalReason ? (
+                        <span className="block text-xs text-muted-foreground">{c.reversalReason}</span>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))

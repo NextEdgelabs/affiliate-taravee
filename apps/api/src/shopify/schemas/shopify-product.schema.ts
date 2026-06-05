@@ -103,6 +103,17 @@ export class ShopifyProduct {
   @Prop({ default: false })
   guidelinesVisibleToCreators: boolean;
 
+  /**
+   * APP-OWNED compliance hold: when true, ALL creator redirects to this product
+   * stop (incl. rowless storefront links) — a per-product kill-switch for a
+   * recalled/non-compliant SKU. Never synced.
+   */
+  @Prop({ default: false })
+  complianceHold: boolean;
+
+  @Prop()
+  complianceHoldReason?: string;
+
   @Prop({ default: false })
   deletedInShopify: boolean;
 

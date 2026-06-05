@@ -4,12 +4,17 @@ import {
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
-import type { CreatorLink as CreatorLinkDto, SessionUser } from "@taravee/types";
+import type {
+  AdminLink as AdminLinkDto,
+  CreatorLink as CreatorLinkDto,
+  SessionUser,
+} from "@taravee/types";
 import type { Request, Response } from "express";
 
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -18,6 +23,7 @@ import { AuthenticatedGuard } from "../common/guards/authenticated.guard";
 import { CreatorActiveGuard } from "../common/guards/creator-active.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CreateLinkDto } from "./dto/create-link.dto";
+import { SetLinkStatusDto } from "./dto/link-status.dto";
 import { type ClickMeta, LinksService } from "./links.service";
 
 function clickMeta(req: Request): ClickMeta {
@@ -49,6 +55,29 @@ export class LinksController {
   }
 }
 
+/** Admin takedown console — list links and disable/re-enable a specific one. */
+@Controller("admin/links")
+@UseGuards(AuthenticatedGuard, RolesGuard)
+@Roles("admin")
+export class AdminLinksController {
+  constructor(private readonly links: LinksService) {}
+
+  @Get()
+  list(): Promise<AdminLinkDto[]> {
+    return this.links.listAdmin();
+  }
+
+  @Patch(":id/status")
+  async setStatus(
+    @Param("id") id: string,
+    @Body() dto: SetLinkStatusDto,
+  ): Promise<AdminLinkDto> {
+    const link = await this.links.setStatus(id, dto.status, dto.reason);
+    if (!link) throw new NotFoundException("Link not found");
+    return link;
+  }
+}
+
 /** PUBLIC redirect surface — no guards. Stamps UTM and 302s to Shopify. */
 @Controller()
 export class RedirectController {
@@ -61,9 +90,11 @@ export class RedirectController {
     @Res() res: Response,
   ): Promise<void> {
     const link = await this.links.findById(linkId);
-    if (!link || link.status !== "active") {
+    if (!link) {
       throw new NotFoundException("Link not found");
     }
+    // A disabled/held/suspended link resolves to a neutral "unavailable" page
+    // (handled inside resolveAndRecordLink) rather than 404 or the store.
     const url = await this.links.resolveAndRecordLink(link, clickMeta(req));
     res.redirect(302, url);
   }
