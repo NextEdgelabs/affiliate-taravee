@@ -6,6 +6,7 @@ import { titleCase } from "@taravee/ui/lib/format";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { CampaignLinkDialog } from "@/components/campaign-link-dialog";
 import { CopyButton } from "@/components/copy-button";
 import { serverGet } from "@/lib/server-api";
 
@@ -53,7 +54,16 @@ export default async function CollectionsPage() {
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/collections/${c.id}/edit`}>Edit</Link>
                   </Button>
-                  {c.status === "published" && <CopyButton value={c.publicUrl} label="Copy URL" />}
+                  {c.status === "published" && (
+                    <>
+                      <CopyButton value={c.publicUrl} label="Copy URL" />
+                      <CampaignLinkDialog
+                        type="collection"
+                        collectionSlug={c.slug}
+                        triggerLabel="Campaign link"
+                      />
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
