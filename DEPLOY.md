@@ -73,10 +73,15 @@ ADMIN_URL=https://admin.taravee.com                # OAuth returns here
 # SHOPIFY_STOREFRONT_DOMAIN=shop.yourbrand.com     # if buyers should land on a custom domain
 
 # Frontends
-API_ORIGIN=https://api.taravee.com                 # admin + affiliate proxy /api here
+NEXT_PUBLIC_API_URL=https://api.taravee.com/api    # baked at BUILD time — the API origin the browser AND SSR call
 STOREFRONT_URL=https://shop.taravee.com            # public link base
-NEXT_PUBLIC_API_URL=https://api.taravee.com/api    # storefront SSR + redirect hrefs
+# API_ORIGIN=https://api.taravee.com               # OPTIONAL: only to point admin/affiliate SSR at a PRIVATE/internal API host. Unset ⇒ SSR reuses NEXT_PUBLIC_API_URL.
 ```
+
+> **Admin/affiliate SSR session check.** The dashboards verify the session server-side. That
+> SSR fetch uses `API_ORIGIN` if set, otherwise falls back to the baked `NEXT_PUBLIC_API_URL`.
+> So you normally only need `NEXT_PUBLIC_API_URL` (at build time) — an unset `API_ORIGIN` no
+> longer silently points SSR at `localhost:4000` (which bounced login to `/login`).
 
 Generate secrets: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
 
