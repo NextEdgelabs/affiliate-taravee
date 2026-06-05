@@ -16,6 +16,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { Model } from "mongoose";
 
 import {
+  contentFromUtmParameters,
   refFromLandingPage,
   refFromUtmParameters,
 } from "../common/attribution/utm.util";
@@ -40,6 +41,9 @@ export interface OrderAttribution {
   currency: string;
   /** Product handle (UTM term) from the SAME visit that won the refCode. */
   productHandle: string | null;
+  /** linkId (UTM content) from the winning visit — ties the order to a campaign. */
+  lastLinkId: string | null;
+  firstLinkId: string | null;
   orderNumber?: string;
   shopifyCreatedAt?: string;
 }
@@ -746,6 +750,8 @@ export class ShopifyService {
         subtotal: 0,
         currency: "INR",
         productHandle: null,
+        lastLinkId: null,
+        firstLinkId: null,
       };
     }
     const journey = order.customerJourneySummary;
@@ -766,6 +772,10 @@ export class ShopifyService {
     // override is never paired with a different creator's link.
     const winningVisit = lastRef ? journey?.lastVisit : firstRef ? journey?.firstVisit : null;
     const productHandle = winningVisit?.utmParameters?.term ?? null;
+    // linkId (utm_content) from each touch — paired with its own refCode so the
+    // reader can match link.creatorId to the attributed creator (anti-forgery).
+    const lastLinkId = contentFromUtmParameters(journey?.lastVisit?.utmParameters);
+    const firstLinkId = contentFromUtmParameters(journey?.firstVisit?.utmParameters);
 
     return {
       ready: journey?.ready ?? false,
@@ -775,6 +785,8 @@ export class ShopifyService {
       subtotal,
       currency,
       productHandle,
+      lastLinkId,
+      firstLinkId,
       orderNumber: order.name,
       shopifyCreatedAt: order.createdAt,
     };

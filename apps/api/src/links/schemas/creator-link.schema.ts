@@ -16,15 +16,39 @@ export class CreatorLink {
   @Prop({ required: true })
   creatorSlug: string;
 
-  @Prop({ enum: ["product", "store"], required: true })
+  @Prop({ enum: ["product", "store", "collection"], required: true })
   type: LinkType;
 
   /** Set for product links. */
   @Prop()
   productHandle?: string;
 
+  /** Set for collection links (creator-collection slug). */
+  @Prop()
+  collectionSlug?: string;
+
   @Prop({ required: true })
   title: string;
+
+  // ── Campaign tagging (lets one product/store/collection have many links) ───
+  /** Human label, e.g. "June Reel". Absent on the single default link. */
+  @Prop()
+  campaignLabel?: string;
+
+  /** slugify(campaignLabel) — the per-campaign identity inside (creator,type,target). */
+  @Prop()
+  campaignKey?: string;
+
+  /** Optional channel overrides; campaign (=refCode) is NEVER overridden. */
+  @Prop()
+  utmSourceOverride?: string;
+
+  @Prop()
+  utmMediumOverride?: string;
+
+  /** Free-form creator notes / dates. */
+  @Prop()
+  notes?: string;
 
   @Prop({ enum: ["active", "disabled"], default: "active" })
   status: "active" | "disabled";
@@ -53,3 +77,9 @@ export class CreatorLink {
 
 export const CreatorLinkSchema = SchemaFactory.createForClass(CreatorLink);
 CreatorLinkSchema.index({ creatorId: 1, createdAt: -1 });
+// A named campaign is unique within (creator, type, target). The default
+// (unnamed) link has no campaignKey and is left unconstrained by this filter.
+CreatorLinkSchema.index(
+  { creatorId: 1, type: 1, productHandle: 1, collectionSlug: 1, campaignKey: 1 },
+  { unique: true, partialFilterExpression: { campaignKey: { $exists: true } } },
+);

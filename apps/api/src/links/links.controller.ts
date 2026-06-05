@@ -28,10 +28,16 @@ import { type ClickMeta, LinksService } from "./links.service";
 
 function clickMeta(req: Request): ClickMeta {
   const fwd = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0];
+  // Country is injected by the edge/CDN (Cloudflare, Vercel, GCP LB). Absent in
+  // local dev — we never derive it from the raw IP, preserving the no-PII posture.
+  const country = (req.headers["cf-ipcountry"] ??
+    req.headers["x-vercel-ip-country"] ??
+    req.headers["x-appengine-country"]) as string | undefined;
   return {
     ip: fwd?.trim() || req.ip,
     referrer: req.headers["referer"] as string | undefined,
     userAgent: req.headers["user-agent"] as string | undefined,
+    country,
   };
 }
 

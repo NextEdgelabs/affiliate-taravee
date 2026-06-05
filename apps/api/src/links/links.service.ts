@@ -8,13 +8,16 @@ import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
   AdminLink as AdminLinkDto,
+  AttributionUtm,
   CreatorLink as CreatorLinkDto,
   LinkType,
 } from "@taravee/types";
 import { createHash } from "node:crypto";
 import { Model, Types } from "mongoose";
+import { UAParser } from "ua-parser-js";
 
 import { appendAttribution, buildAttributionUtm } from "../common/attribution/utm.util";
+import { slugify } from "../common/utils/code.util";
 import { CreatorsService } from "../creators/creators.service";
 import { ProductsService } from "../shopify/products.service";
 import { ShopifyService } from "../shopify/shopify.service";
@@ -31,10 +34,19 @@ export interface ClickMeta {
   ip?: string;
   referrer?: string;
   userAgent?: string;
+  /** ISO-2 country supplied by the edge (cf-ipcountry / x-vercel-ip-country). */
+  country?: string;
 }
 
 const BOT_RE =
   /bot|crawler|spider|crawl|slurp|preview|facebookexternalhit|slackbot|whatsapp|telegrambot|headless/i;
+
+/** Mongo duplicate-key (unique index) error code. */
+function isDuplicateKeyError(e: unknown): boolean {
+  return (
+    typeof e === "object" && e !== null && (e as { code?: number }).code === 11000
+  );
+}
 
 @Injectable()
 export class LinksService {
@@ -79,8 +91,13 @@ export class LinksService {
     input: {
       type: LinkType;
       productHandle?: string;
+      collectionSlug?: string;
       title?: string;
       acknowledgedGuidelinesHash?: string;
+      campaignLabel?: string;
+      utmSourceOverride?: string;
+      utmMediumOverride?: string;
+      notes?: string;
     },
   ): Promise<CreatorLinkDto> {
     const profile = await this.creators.findByUserId(creatorUserId);
@@ -90,15 +107,36 @@ export class LinksService {
     if (input.type === "product" && !input.productHandle) {
       throw new BadRequestException("productHandle is required for product links");
     }
-    // Idempotent: one active link per (creator, type, product). Lets the UI offer
-    // "Get links" on a product without spawning duplicate rows on repeat clicks —
-    // and both link types (storefront + direct) hang off this single record.
+    if (input.type === "collection" && !input.collectionSlug) {
+      throw new BadRequestException("collectionSlug is required for collection links");
+    }
+
+    // A campaign label mints a SEPARATE link so the same target can be promoted
+    // many times (e.g. across months/channels) and tracked apart. No label ⇒ the
+    // single default link, which stays idempotent like before.
+    const campaignKey = input.campaignLabel ? slugify(input.campaignLabel) : undefined;
+    if (input.campaignLabel && !campaignKey) {
+      throw new BadRequestException("Campaign name must contain letters or numbers");
+    }
+
+    // Identity of a link = (creator, type, target, campaign). productHandle and
+    // collectionSlug pin the target; campaignKey (or its absence) pins the campaign.
+    const targetMatch = {
+      creatorId: new Types.ObjectId(creatorUserId),
+      type: input.type,
+      productHandle:
+        input.type === "product" ? input.productHandle : { $in: [null, undefined] },
+      collectionSlug:
+        input.type === "collection" ? input.collectionSlug : { $in: [null, undefined] },
+    };
+
+    // Idempotent: re-requesting the same campaign returns the existing link rather
+    // than spawning duplicates (the UI's "Get links" may fire repeatedly).
     const existing = await this.links
       .findOne({
-        creatorId: new Types.ObjectId(creatorUserId),
-        type: input.type,
-        productHandle: input.type === "product" ? input.productHandle : { $in: [null, undefined] },
+        ...targetMatch,
         status: "active",
+        campaignKey: campaignKey ?? { $in: [null, undefined] },
       })
       .exec();
     if (existing) {
@@ -131,18 +169,44 @@ export class LinksService {
         ack.acknowledgedProhibitedClaims = compliance.prohibitedClaims;
       }
     }
-    const doc = await this.links.create({
-      creatorId: new Types.ObjectId(creatorUserId),
-      creatorRefCode: profile.refCode,
-      creatorSlug: profile.slug,
-      type: input.type,
-      productHandle: input.productHandle,
-      title:
-        input.title ??
-        (input.type === "product" ? (input.productHandle ?? "Product") : "My store"),
-      ...ack,
-    });
-    return this.toDto(doc, 0);
+    const defaultTitle =
+      input.type === "product"
+        ? (input.productHandle ?? "Product")
+        : input.type === "collection"
+          ? (input.collectionSlug ?? "Collection")
+          : "My store";
+    try {
+      const doc = await this.links.create({
+        creatorId: new Types.ObjectId(creatorUserId),
+        creatorRefCode: profile.refCode,
+        creatorSlug: profile.slug,
+        type: input.type,
+        productHandle: input.productHandle,
+        collectionSlug: input.collectionSlug,
+        campaignKey,
+        campaignLabel: input.campaignLabel?.trim() || undefined,
+        utmSourceOverride: input.utmSourceOverride?.trim() || undefined,
+        utmMediumOverride: input.utmMediumOverride?.trim() || undefined,
+        notes: input.notes?.trim() || undefined,
+        title: input.title ?? defaultTitle,
+        ...ack,
+      });
+      return this.toDto(doc, 0);
+    } catch (e) {
+      // Race: the unique campaign index tripped between findOne and create.
+      // Return whoever won (active or not — the dto carries the status).
+      if (campaignKey && isDuplicateKeyError(e)) {
+        const dup = await this.links.findOne({ ...targetMatch, campaignKey }).exec();
+        if (dup) {
+          const [count] = await this.clicks.aggregate<{ n: number }>([
+            { $match: { linkId: dup._id, isBot: false } },
+            { $group: { _id: "$linkId", n: { $sum: 1 } } },
+          ]);
+          return this.toDto(dup, count?.n ?? 0);
+        }
+      }
+      throw e;
+    }
   }
 
   async listForCreator(creatorUserId: string): Promise<CreatorLinkDto[]> {
@@ -180,7 +244,10 @@ export class LinksService {
       creatorRefCode: doc.creatorRefCode,
       type: doc.type,
       productHandle: doc.productHandle,
+      collectionSlug: doc.collectionSlug,
       title: doc.title,
+      campaignLabel: doc.campaignLabel,
+      campaignKey: doc.campaignKey,
       status: doc.status,
       disabledReason: doc.disabledReason,
       clicks,
@@ -230,20 +297,30 @@ export class LinksService {
     if (await this.isHalted(link.creatorRefCode, link.productHandle)) {
       return this.unavailableUrl();
     }
+    // Destination: product → Shopify product page, store → Shopify home,
+    // collection → the creator's branded storefront collection page (its Buy
+    // buttons then re-attribute per product on the way to checkout).
     const base =
       link.type === "product"
         ? await this.shopify.buildProductUrl(link.productHandle!)
-        : await this.shopify.buildStoreUrl();
+        : link.type === "collection"
+          ? `${this.storefrontUrl()}/${link.creatorSlug}/c/${link.collectionSlug}`
+          : await this.shopify.buildStoreUrl();
     const utm = buildAttributionUtm(
       link.creatorRefCode,
       link._id.toString(),
       link.productHandle,
+      { sourceOverride: link.utmSourceOverride, mediumOverride: link.utmMediumOverride },
     );
     await this.recordClick({
       linkId: link._id,
       creatorId: link.creatorId,
       creatorRefCode: link.creatorRefCode,
       productHandle: link.productHandle,
+      collectionSlug: link.collectionSlug,
+      campaignKey: link.campaignKey,
+      campaignLabel: link.campaignLabel,
+      utm,
       meta,
     });
     return appendAttribution(base, utm);
@@ -272,6 +349,7 @@ export class LinksService {
       creatorId: profile.userId,
       creatorRefCode: refCode,
       productHandle,
+      utm,
       meta,
     });
     return appendAttribution(base, utm);
@@ -282,19 +360,52 @@ export class LinksService {
     creatorId: Types.ObjectId;
     creatorRefCode: string;
     productHandle?: string;
+    collectionSlug?: string;
+    campaignKey?: string;
+    campaignLabel?: string;
+    utm?: AttributionUtm;
     meta: ClickMeta;
   }): Promise<void> {
     const isBot = input.meta.userAgent ? BOT_RE.test(input.meta.userAgent) : false;
+    const ua = this.parseUserAgent(input.meta.userAgent);
     await this.clicks.create({
       linkId: input.linkId,
       creatorId: input.creatorId,
       creatorRefCode: input.creatorRefCode,
       productHandle: input.productHandle,
+      collectionSlug: input.collectionSlug,
+      campaignKey: input.campaignKey,
+      campaignLabel: input.campaignLabel,
+      utmSource: input.utm?.source,
+      utmMedium: input.utm?.medium,
+      utmCampaign: input.utm?.campaign,
+      utmContent: input.utm?.content,
+      utmTerm: input.utm?.term,
       ipHash: input.meta.ip ? this.hashIp(input.meta.ip) : undefined,
+      device: isBot ? "bot" : ua.device,
+      os: ua.os,
+      browser: ua.browser,
+      country: input.meta.country?.trim()?.toUpperCase() || undefined,
       referrer: input.meta.referrer,
       userAgent: input.meta.userAgent,
       isBot,
     });
+  }
+
+  /** Parse device class / OS / browser from the User-Agent (no PII retained). */
+  private parseUserAgent(ua?: string): {
+    device?: string;
+    os?: string;
+    browser?: string;
+  } {
+    if (!ua) return {};
+    const r = new UAParser(ua).getResult();
+    return {
+      // UAParser only sets device.type for mobile/tablet/etc — desktop is undefined.
+      device: r.device.type ?? "desktop",
+      os: r.os.name,
+      browser: r.browser.name,
+    };
   }
 
   private hashIp(ip: string): string {
@@ -307,13 +418,21 @@ export class LinksService {
     const publicUrl =
       doc.type === "product"
         ? `${this.storefrontUrl()}/${doc.creatorSlug}/${doc.productHandle}`
-        : `${this.storefrontUrl()}/${doc.creatorSlug}`;
+        : doc.type === "collection"
+          ? `${this.storefrontUrl()}/${doc.creatorSlug}/c/${doc.collectionSlug}`
+          : `${this.storefrontUrl()}/${doc.creatorSlug}`;
     return {
       id: doc._id.toString(),
       creatorId: doc.creatorId.toString(),
       type: doc.type,
       productHandle: doc.productHandle,
+      collectionSlug: doc.collectionSlug,
       title: doc.title,
+      campaignLabel: doc.campaignLabel,
+      campaignKey: doc.campaignKey,
+      utmSourceOverride: doc.utmSourceOverride,
+      utmMediumOverride: doc.utmMediumOverride,
+      notes: doc.notes,
       publicUrl,
       redirectUrl: `${this.apiBaseUrl()}/api/r/${doc._id.toString()}`,
       status: doc.status,

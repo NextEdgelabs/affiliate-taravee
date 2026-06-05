@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/co
 import type {
   AdminStats,
   AttributionStatus,
+  CampaignAnalytics,
   CreatorStats,
   OrderSummary,
   SessionUser,
@@ -109,5 +110,10 @@ export class CreatorStatsController {
       commissionApproved: summary.approved,
       currency: summary.currency,
     };
+  }
+
+  @Get("campaigns")
+  campaigns(@CurrentUser() user: SessionUser): Promise<CampaignAnalytics[]> {
+    return this.orders.campaignAnalyticsForCreator(user.id);
   }
 }
