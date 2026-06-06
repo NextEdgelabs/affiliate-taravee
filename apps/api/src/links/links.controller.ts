@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -84,24 +85,76 @@ export class AdminLinksController {
   }
 }
 
-/** PUBLIC redirect surface — no guards. Stamps UTM and 302s to Shopify. */
+/** A 24-char hex string is a Mongo ObjectId (legacy link id); anything else is a
+ *  creator slug. ObjectId.isValid is too loose (accepts any 12-char string), so
+ *  match hex explicitly to avoid misreading a slug as an id. */
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
+
+/** Public redirect surface — no guards. Stamps UTM and 302s to Shopify.
+ *
+ *  Readable, product-based links (mirror the storefront URL):
+ *    /api/r/{slug}                      → store
+ *    /api/r/{slug}/{productHandle}      → product
+ *    /api/r/{slug}/c/{collectionSlug}   → collection
+ *  Append ?c={campaign} to target a named campaign link.
+ *
+ *  Legacy /api/r/{linkId} (24-hex) stays a permanent alias so already-shared
+ *  links never break. The storefront grid keeps using /api/c/{refCode}/r/... . */
 @Controller()
 export class RedirectController {
   constructor(private readonly links: LinksService) {}
 
-  @Get("r/:linkId")
-  async byLink(
-    @Param("linkId") linkId: string,
+  @Get("r/:slug/c/:collectionSlug")
+  async byCollection(
+    @Param("slug") slug: string,
+    @Param("collectionSlug") collectionSlug: string,
+    @Query("c") campaign: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const link = await this.links.findById(linkId);
-    if (!link) {
-      throw new NotFoundException("Link not found");
+    const url = await this.links.resolveAndRecordBySlug(
+      slug,
+      { collectionSlug, campaign },
+      clickMeta(req),
+    );
+    res.redirect(302, url);
+  }
+
+  @Get("r/:slug/:productHandle")
+  async byProduct(
+    @Param("slug") slug: string,
+    @Param("productHandle") productHandle: string,
+    @Query("c") campaign: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const url = await this.links.resolveAndRecordBySlug(
+      slug,
+      { productHandle, campaign },
+      clickMeta(req),
+    );
+    res.redirect(302, url);
+  }
+
+  @Get("r/:idOrSlug")
+  async byLinkOrStore(
+    @Param("idOrSlug") idOrSlug: string,
+    @Query("c") campaign: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Legacy alias: a 24-hex id resolves by linkId (preserves the exact link/campaign).
+    if (OBJECT_ID_RE.test(idOrSlug)) {
+      const link = await this.links.findById(idOrSlug);
+      if (!link) throw new NotFoundException("Link not found");
+      // A disabled/held/suspended link resolves to a neutral "unavailable" page
+      // (handled inside resolveAndRecordLink) rather than 404 or the store.
+      const url = await this.links.resolveAndRecordLink(link, clickMeta(req));
+      res.redirect(302, url);
+      return;
     }
-    // A disabled/held/suspended link resolves to a neutral "unavailable" page
-    // (handled inside resolveAndRecordLink) rather than 404 or the store.
-    const url = await this.links.resolveAndRecordLink(link, clickMeta(req));
+    // Otherwise it's a creator slug → store direct link.
+    const url = await this.links.resolveAndRecordBySlug(idOrSlug, { campaign }, clickMeta(req));
     res.redirect(302, url);
   }
 

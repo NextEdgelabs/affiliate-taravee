@@ -355,6 +355,58 @@ export class LinksService {
     return appendAttribution(base, utm);
   }
 
+  /**
+   * Resolve a READABLE direct link (`/api/r/{slug}/{handle}` etc.) → final URL.
+   * Looks up the actual CreatorLink row (campaign-aware via ?c=) so per-link
+   * attribution and analytics keep working; falls back to a rowless creator
+   * redirect if no row exists (e.g. a link that was never minted or removed).
+   */
+  async resolveAndRecordBySlug(
+    slug: string,
+    opts: { productHandle?: string; collectionSlug?: string; campaign?: string },
+    meta: ClickMeta,
+  ): Promise<string> {
+    const profile = await this.creators.findBySlug(slug);
+    if (!profile?.refCode || profile.verificationStatus !== "approved") {
+      throw new NotFoundException("Unknown creator");
+    }
+    const type: LinkType = opts.collectionSlug
+      ? "collection"
+      : opts.productHandle
+        ? "product"
+        : "store";
+    // `?c=` may arrive as a label or a key — normalize to the stored campaignKey.
+    const campaignKey = opts.campaign ? slugify(opts.campaign) || undefined : undefined;
+    const link = await this.links
+      .findOne({
+        creatorId: profile.userId,
+        type,
+        productHandle: type === "product" ? opts.productHandle : { $in: [null, undefined] },
+        collectionSlug:
+          type === "collection" ? opts.collectionSlug : { $in: [null, undefined] },
+        campaignKey: campaignKey ?? { $in: [null, undefined] },
+        status: "active",
+      })
+      .exec();
+    if (link) return this.resolveAndRecordLink(link, meta);
+
+    // No matching row → rowless fallback (no campaign/link-level attribution).
+    if (type === "collection") {
+      if (profile.linksSuspended) return this.unavailableUrl();
+      const base = `${this.storefrontUrl()}/${profile.slug}/c/${opts.collectionSlug}`;
+      const utm = buildAttributionUtm(profile.refCode, "storefront", undefined);
+      await this.recordClick({
+        creatorId: profile.userId,
+        creatorRefCode: profile.refCode,
+        collectionSlug: opts.collectionSlug,
+        utm,
+        meta,
+      });
+      return appendAttribution(base, utm);
+    }
+    return this.resolveAndRecordCreator(profile.refCode, opts.productHandle, meta);
+  }
+
   private async recordClick(input: {
     linkId?: Types.ObjectId;
     creatorId: Types.ObjectId;
@@ -414,6 +466,14 @@ export class LinksService {
     return createHash("sha256").update(`${ip}|${salt}|${day}`).digest("hex").slice(0, 32);
   }
 
+  /** Readable, product-based path that mirrors the storefront URL:
+   *  product → slug/handle, collection → slug/c/collectionSlug, store → slug. */
+  private redirectPath(doc: CreatorLinkDocument): string {
+    if (doc.type === "product") return `${doc.creatorSlug}/${doc.productHandle}`;
+    if (doc.type === "collection") return `${doc.creatorSlug}/c/${doc.collectionSlug}`;
+    return doc.creatorSlug;
+  }
+
   private toDto(doc: CreatorLinkDocument, clicks: number): CreatorLinkDto {
     const publicUrl =
       doc.type === "product"
@@ -421,6 +481,8 @@ export class LinksService {
         : doc.type === "collection"
           ? `${this.storefrontUrl()}/${doc.creatorSlug}/c/${doc.collectionSlug}`
           : `${this.storefrontUrl()}/${doc.creatorSlug}`;
+    // Named campaigns disambiguate the otherwise-identical readable path via ?c=.
+    const campaignQuery = doc.campaignKey ? `?c=${doc.campaignKey}` : "";
     return {
       id: doc._id.toString(),
       creatorId: doc.creatorId.toString(),
@@ -434,7 +496,7 @@ export class LinksService {
       utmMediumOverride: doc.utmMediumOverride,
       notes: doc.notes,
       publicUrl,
-      redirectUrl: `${this.apiBaseUrl()}/api/r/${doc._id.toString()}`,
+      redirectUrl: `${this.apiBaseUrl()}/api/r/${this.redirectPath(doc)}${campaignQuery}`,
       status: doc.status,
       disabledReason: doc.disabledReason,
       clicks,
